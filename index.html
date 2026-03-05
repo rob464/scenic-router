@@ -96,7 +96,7 @@
     // Scenic scoring (Places library)
     // ------------------------
     const SCENIC_TYPES = ["park", "tourist_attraction", "natural_feature"];
-    const RADIUS_METERS = 1500;
+    const RADIUS_METERS = 1200;
 
     // Keep a tiny cache so repeated searches in one session don’t re-hit the API
     const placeCache = new Map();
@@ -108,17 +108,28 @@
     }
 
     function nearbySearch(placesService, location, radius, type) {
-      return new Promise((resolve) => {
-        placesService.nearbySearch(
-          { location, radius, type },
-          (results, status) => {
-            if (status === google.maps.places.PlacesServiceStatus.OK && results) resolve(results);
-            else resolve([]); // ZERO_RESULTS, OVER_QUERY_LIMIT, etc.
-          }
-        );
-      });
-    }
+  return new Promise((resolve) => {
+    let done = false;
 
+    const timer = setTimeout(() => {
+      if (done) return;
+      done = true;
+      resolve([]); // fail-safe
+    }, 3500); // 3.5s timeout per request
+
+    placesService.nearbySearch(
+      { location, radius, type },
+      (results, status) => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+
+        if (status === google.maps.places.PlacesServiceStatus.OK && results) resolve(results);
+        else resolve([]);
+      }
+    );
+  });
+}
     function uniqByPlaceId(items) {
       const m = new Map();
       for (const it of items) if (it?.place_id && !m.has(it.place_id)) m.set(it.place_id, it);
@@ -149,42 +160,43 @@
       return all;
     }
 
-    async function scoreRoute({ route, placesService }) {
-      const encoded = route.overview_polyline?.points;
-      const path = decodePolyline(encoded);
+    async function scoreRoute({ route, placesService, onProgress }) {
+  const encoded = route.overview_polyline?.points;
+  const path = decodePolyline(encoded);
 
-      // Tune these if you want it faster/cheaper:
-      const samples = sampleAlongPath(path, 5000, 10);
+  const samples = sampleAlongPath(path, 8000, 6);
 
-      let places = [];
-      for (const p of samples) {
-        const results = await scenicPlacesAtPoint({ placesService, lat: p.lat, lng: p.lng });
-        places.push(...results);
-      }
+  let places = [];
+  for (let idx = 0; idx < samples.length; idx++) {
+    onProgress?.(idx + 1, samples.length);
 
-      const unique = uniqByPlaceId(places);
+    const p = samples[idx];
+    const results = await scenicPlacesAtPoint({ placesService, lat: p.lat, lng: p.lng });
+    places.push(...results);
+  }
 
-      // Score: count + rating/popularity bonus
-      let ratingBonus = 0;
-      for (const p of unique) {
-        const r = typeof p.rating === "number" ? p.rating : 0;
-        const v = typeof p.user_ratings_total === "number" ? p.user_ratings_total : 0;
-        if (r >= 4.3) ratingBonus += 1;
-        if (v >= 200) ratingBonus += 1;
-      }
+  const unique = uniqByPlaceId(places);
 
-      const leg = route.legs?.[0];
-      const distance = leg?.distance?.value ?? 0;
-      const duration = leg?.duration?.value ?? 0;
+  let ratingBonus = 0;
+  for (const p of unique) {
+    const r = typeof p.rating === "number" ? p.rating : 0;
+    const v = typeof p.user_ratings_total === "number" ? p.user_ratings_total : 0;
+    if (r >= 4.3) ratingBonus += 1;
+    if (v >= 200) ratingBonus += 1;
+  }
 
-      return {
-        scenicCount: unique.length,
-        ratingBonus,
-        rawScenic: unique.length + ratingBonus,
-        distance,
-        duration
-      };
-    }
+  const leg = route.legs?.[0];
+  const distance = leg?.distance?.value ?? 0;
+  const duration = leg?.duration?.value ?? 0;
+
+  return {
+    scenicCount: unique.length,
+    ratingBonus,
+    rawScenic: unique.length + ratingBonus,
+    distance,
+    duration
+  };
+}
 
     function detourPenalty(candidate, baseline) {
       const detourDist = (candidate.distance - baseline.distance) / Math.max(1, baseline.distance);
