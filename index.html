@@ -21,10 +21,9 @@
   </style>
 
   <script>
-    // 1) PASTE YOUR KEY HERE
-    const MAPS_KEY = "AIzaSyCNGxoiKjhICp-Qt2FHpn4XuXd0Nngf34g";
+    // ✅ PASTE YOUR KEY HERE (this key is public, so restrict it by HTTP referrer + API restrictions in Google Cloud)
+    const MAPS_KEY = "PASTE_YOUR_GOOGLE_KEY_HERE";
 
-    // Load Google Maps JS (includes Places library)
     const s = document.createElement("script");
     s.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_KEY}&libraries=places&v=weekly`;
     s.defer = true;
@@ -70,15 +69,17 @@
       const dLat = toRad(b.lat - a.lat);
       const dLng = toRad(b.lng - a.lng);
       const lat1 = toRad(a.lat);
-      const lat2 = toRad(a.lat);
+      const lat2 = toRad(b.lat); // ✅ correct
       const s = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLng/2)**2;
       return 2 * R * Math.asin(Math.min(1, Math.sqrt(s)));
     }
 
-    function sampleAlongPath(points, everyMeters = 4000, maxSamples = 10) {
+    // ✅ “Quickest possible” sampling: 3 points max (very fast/cheap)
+    function sampleAlongPath(points, everyMeters = 12000, maxSamples = 3) {
       if (!points || points.length === 0) return [];
       const samples = [points[0]];
       let acc = 0;
+
       for (let i = 1; i < points.length; i++) {
         acc += haversineMeters(points[i - 1], points[i]);
         if (acc >= everyMeters) {
@@ -87,49 +88,53 @@
           if (samples.length >= maxSamples) break;
         }
       }
+
       const last = points[points.length - 1];
-      if (samples.length < maxSamples) samples.push(last);
-      return samples;
+      if (samples.length < maxSamples) {
+        const prev = samples[samples.length - 1];
+        if (!prev || haversineMeters(prev, last) > 50) samples.push(last);
+      }
+      return samples.slice(0, maxSamples);
     }
 
     // ------------------------
-    // Scenic scoring (Places library)
+    // Scenic scoring (Places library) — fastest version
     // ------------------------
-    const SCENIC_TYPES = ["park", "tourist_attraction", "natural_feature"];
+    // ✅ 1 type only = fewer calls; "tourist_attraction" tends to correlate well with scenic stops
+    const SCENIC_TYPES = ["tourist_attraction"];
     const RADIUS_METERS = 1200;
 
-    // Keep a tiny cache so repeated searches in one session don’t re-hit the API
+    // Simple cache for this browser session (rounded key)
     const placeCache = new Map();
     function cacheKey(lat, lng, type) {
-      // round to reduce unique keys (cheap caching)
-      const rlat = lat.toFixed(3);
-      const rlng = lng.toFixed(3);
-      return `${rlat},${rlng},${RADIUS_METERS},${type}`;
+      return `${lat.toFixed(3)},${lng.toFixed(3)},${RADIUS_METERS},${type}`;
     }
 
+    // ✅ Timeout wrapper so nothing can hang forever
     function nearbySearch(placesService, location, radius, type) {
-  return new Promise((resolve) => {
-    let done = false;
+      return new Promise((resolve) => {
+        let done = false;
 
-    const timer = setTimeout(() => {
-      if (done) return;
-      done = true;
-      resolve([]); // fail-safe
-    }, 3500); // 3.5s timeout per request
+        const timer = setTimeout(() => {
+          if (done) return;
+          done = true;
+          resolve([]); // fail-safe
+        }, 3500);
 
-    placesService.nearbySearch(
-      { location, radius, type },
-      (results, status) => {
-        if (done) return;
-        done = true;
-        clearTimeout(timer);
+        placesService.nearbySearch(
+          { location, radius, type },
+          (results, status) => {
+            if (done) return;
+            done = true;
+            clearTimeout(timer);
 
-        if (status === google.maps.places.PlacesServiceStatus.OK && results) resolve(results);
-        else resolve([]);
-      }
-    );
-  });
-}
+            if (status === google.maps.places.PlacesServiceStatus.OK && results) resolve(results);
+            else resolve([]);
+          }
+        );
+      });
+    }
+
     function uniqByPlaceId(items) {
       const m = new Map();
       for (const it of items) if (it?.place_id && !m.has(it.place_id)) m.set(it.place_id, it);
@@ -151,63 +156,60 @@
           RADIUS_METERS,
           type
         );
+
         placeCache.set(key, results);
         all.push(...results);
-
-        // small delay helps avoid rate-limits in some browsers/accounts
-        await new Promise(r => setTimeout(r, 80));
       }
       return all;
     }
 
     async function scoreRoute({ route, placesService, onProgress }) {
-  const encoded = route.overview_polyline?.points;
-  const path = decodePolyline(encoded);
+      const encoded = route.overview_polyline?.points;
+      const path = decodePolyline(encoded);
 
-  const samples = sampleAlongPath(path, 8000, 6);
+      const samples = sampleAlongPath(path, 12000, 3);
 
-  let places = [];
-  for (let idx = 0; idx < samples.length; idx++) {
-    onProgress?.(idx + 1, samples.length);
+      let places = [];
+      for (let idx = 0; idx < samples.length; idx++) {
+        onProgress?.(idx + 1, samples.length);
+        const p = samples[idx];
+        const results = await scenicPlacesAtPoint({ placesService, lat: p.lat, lng: p.lng });
+        places.push(...results);
+      }
 
-    const p = samples[idx];
-    const results = await scenicPlacesAtPoint({ placesService, lat: p.lat, lng: p.lng });
-    places.push(...results);
-  }
+      const unique = uniqByPlaceId(places);
 
-  const unique = uniqByPlaceId(places);
+      // Score: count + tiny rating bonus
+      let ratingBonus = 0;
+      for (const p of unique) {
+        const r = typeof p.rating === "number" ? p.rating : 0;
+        const v = typeof p.user_ratings_total === "number" ? p.user_ratings_total : 0;
+        if (r >= 4.3) ratingBonus += 1;
+        if (v >= 200) ratingBonus += 1;
+      }
 
-  let ratingBonus = 0;
-  for (const p of unique) {
-    const r = typeof p.rating === "number" ? p.rating : 0;
-    const v = typeof p.user_ratings_total === "number" ? p.user_ratings_total : 0;
-    if (r >= 4.3) ratingBonus += 1;
-    if (v >= 200) ratingBonus += 1;
-  }
+      const leg = route.legs?.[0];
+      const distance = leg?.distance?.value ?? 0;
+      const duration = leg?.duration?.value ?? 0;
 
-  const leg = route.legs?.[0];
-  const distance = leg?.distance?.value ?? 0;
-  const duration = leg?.duration?.value ?? 0;
+      return {
+        scenicCount: unique.length,
+        ratingBonus,
+        rawScenic: unique.length + ratingBonus,
+        distance,
+        duration
+      };
+    }
 
-  return {
-    scenicCount: unique.length,
-    ratingBonus,
-    rawScenic: unique.length + ratingBonus,
-    distance,
-    duration
-  };
-}
-
+    // Penalty to avoid silly detours (tune up if it detours too much)
     function detourPenalty(candidate, baseline) {
       const detourDist = (candidate.distance - baseline.distance) / Math.max(1, baseline.distance);
       const detourDur  = (candidate.duration - baseline.duration) / Math.max(1, baseline.duration);
-
-      // Bigger numbers = more “don’t detour”
-      return detourDist * 8 + detourDur * 4;
+      return detourDist * 10 + detourDur * 6;
     }
 
     // ------------------------
-    // UI + Map wiring
+    // Map wiring
     // ------------------------
     let map, directionsService, directionsRenderer, placesService;
 
@@ -256,7 +258,7 @@
           provideRouteAlternatives: true
         });
       } catch (e) {
-        meta.textContent = "Couldn’t get routes. Double-check your key + that Directions is enabled in Google Cloud.";
+        meta.textContent = "Couldn’t get routes. Check your key + that Directions/Places/Maps JS APIs are enabled.";
         return;
       }
 
@@ -266,9 +268,7 @@
         return;
       }
 
-      meta.textContent = `Scoring ${routes.length} route(s) for scenicness…`;
-
-      // Baseline: the fastest route (lowest duration)
+      // Baseline: fastest route
       const baseline = routes
         .map(r => ({
           distance: r.legs?.[0]?.distance?.value ?? Infinity,
@@ -279,9 +279,18 @@
       const scored = [];
       for (let i = 0; i < routes.length; i++) {
         meta.textContent = `Scoring route ${i + 1} of ${routes.length}…`;
-        const s = await scoreRoute({ route: routes[i], placesService });
+
+        const s = await scoreRoute({
+          route: routes[i],
+          placesService,
+          onProgress: (step, total) => {
+            meta.textContent = `Scoring route ${i + 1} of ${routes.length}… (checking area ${step} of ${total})`;
+          }
+        });
+
         const penalty = detourPenalty(s, baseline);
         const finalScore = s.rawScenic - penalty;
+
         scored.push({ i, route: routes[i], ...s, penalty, finalScore });
       }
 
