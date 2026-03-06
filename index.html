@@ -527,7 +527,12 @@
 
       const failteMatch = matchFailteAttraction(place);
       if (failteMatch) {
-        score += 10;
+        score += 20;
+
+        if (/\blake\b|\blough\b|\bforest\b|\bwoods\b|\bmountain\b|\bcliff\b|\bfalls\b|\bwaterfall\b|\bbeach\b|\bcoast\b|\bharbour\b|\bharbor\b|\briver\b/.test(name)) {
+          score += 10;
+        }
+
         place.failteMatch = failteMatch;
       }
 
