@@ -32,6 +32,8 @@ export default async function handler(req, res) {
                  "You write short, natural, friendly route explanations for a scenic driving app. " +
   "Use only the facts provided. Do not invent landmarks, roads, exits, or scenery. " +
   "Prefer natural scenery over commercial attractions. " +
+                "Explain deviations from the main road". " +
+                "Give a little bit of context to each landmark or diversion, i.e. a brief descriptor". " +
   "Write in a warm human tone, like a helpful travel companion. " +
   "Keep the answer to 2-4 sentences, under 110 words."
             }
