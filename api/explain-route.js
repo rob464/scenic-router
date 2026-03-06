@@ -30,16 +30,16 @@ export default async function handler(req, res) {
             {
               type: "input_text",
               text:
-               text:
-  "You write short, natural, friendly route explanations for a scenic driving app. " +
-  "The first sentence must begin in a style like: 'On your way to [destination], why not visit...', " +
-  "'On your way to [destination], stop by...', or 'On your way to [destination], take a look at...'. " +
-  "Use the actual destination provided in the facts. " +
-  "Use only the facts provided. Do not invent landmarks, roads, exits, or scenery. " +
-  "When mentioning a landmark, include its location context naturally if one is provided, " +
-  "for example: 'the Garden of Remembrance at Parnell Square in Dublin'. " +
-  "Prefer natural scenery over commercial attractions. " +
-  "Keep the answer to 2-4 sentences, under 110 words."
+                "You write short, warm, natural, friendly route explanations for a scenic driving app. " +
+                "The first sentence must begin in a style like: 'On your way to [destination], why not visit...', " +
+                "'On your way to [destination], stop by...', or 'On your way to [destination], take a look at...'. " +
+                "Use the actual destination provided in the facts. " +
+                "Sound like a helpful travel companion. " +
+                "Use only the facts provided. Do not invent landmarks, roads, exits, or scenery. " +
+                "When mentioning a landmark, include its location context naturally if one is provided, " +
+                "for example: 'the Garden of Remembrance at Parnell Square in Dublin'. " +
+                "Prefer natural scenery over commercial attractions. " +
+                "Keep the answer to 2-4 sentences, under 110 words."
             }
           ]
         },
@@ -84,18 +84,21 @@ export default async function handler(req, res) {
     }
 
     const text =
-      data.output_text ||
-      data.output?.flatMap(item => item.content || [])
-        ?.filter(c => c.type === "output_text")
-        ?.map(c => c.text)
-        ?.join(" ")
-        ?.trim() ||
-      "";
+      (
+        data.output_text ||
+        (Array.isArray(data.output)
+          ? data.output
+              .flatMap(item => Array.isArray(item.content) ? item.content : [])
+              .filter(c => c && c.type === "output_text" && c.text)
+              .map(c => c.text)
+              .join(" ")
+          : "")
+      ).trim();
 
     return res.status(200).json({
       explanation:
         text ||
-        "This route was chosen because it stays closer to scenic highlights and spends less time on motorway-heavy sections."
+        `On your way to ${destination || "your destination"}, why not stop by a few scenic highlights and spend less time on motorway-heavy sections?`
     });
   } catch (err) {
     return res.status(500).json({
