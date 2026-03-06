@@ -729,6 +729,50 @@
         .join(" ");
     }
 
+    function buildExplanationFacts(route, scenicPlaces, scoreData, origin, destination) {
+      const ranked = rankScenicPlaces(scenicPlaces).slice(0, 3);
+      const failteBoosted = scenicPlaces.filter(p => p.failteMatch).slice(0, 2);
+      const motorwayExitInstruction = findMotorwayExitMoment(route) || "";
+      const quietRoadStep = findLongestNonMotorwayStep(route);
+      const quietRoadInstruction = quietRoadStep
+        ? stripHtml(quietRoadStep.instructions || "")
+        : "";
+
+      return {
+        origin,
+        destination,
+        motorwaySharePercent: Math.round((scoreData.motorwayRatio || 0) * 100),
+        motorwayExitInstruction,
+        scenicHighlights: ranked.map(p => p.name).filter(Boolean),
+        failteHighlights: failteBoosted.map(p => p.name).filter(Boolean),
+        quietRoadInstruction,
+        naturalHighlightsCount: scoreData.naturalCount || 0
+      };
+    }
+
+    async function getLlmRouteExplanation(facts) {
+      try {
+        const r = await fetch("/api/explain-route", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(facts)
+        });
+
+        const data = await r.json();
+        if (!r.ok) {
+          console.warn("LLM explanation failed:", data);
+          return null;
+        }
+
+        return data.explanation || null;
+      } catch (err) {
+        console.warn("LLM explanation error:", err);
+        return null;
+      }
+    }
+
     async function scoreRoute({ route, placesService, onProgress, samplesOverride }) {
       const path = routeToPoints(route);
       const samples = samplesOverride || sampleAlongPath(path, SAMPLE_EVERY_METERS, MAX_SAMPLES);
@@ -974,18 +1018,16 @@
       addScenicMarkers(winner.scenicPlaces);
       finishProgress();
 
-const fallbackExplanation = buildRouteExplanation(winner.route, winner.scenicPlaces, winner);
-
-const explanationFacts = buildExplanationFacts(
-  winner.route,
-  winner.scenicPlaces,
-  winner,
-  origin,
-  destination
-);
-
-const llmExplanation = await getLlmRouteExplanation(explanationFacts);
-const explanation = llmExplanation || fallbackExplanation;
+      const fallbackExplanation = buildRouteExplanation(winner.route, winner.scenicPlaces, winner);
+      const explanationFacts = buildExplanationFacts(
+        winner.route,
+        winner.scenicPlaces,
+        winner,
+        origin,
+        destination
+      );
+      const llmExplanation = await getLlmRouteExplanation(explanationFacts);
+      const explanation = llmExplanation || fallbackExplanation;
 
       meta.innerHTML = `
         <div><b>Chosen scenic route</b> (route #${winner.routeIndex + 1} of ${winner.directionsResult.routes.length})</div>
