@@ -80,7 +80,6 @@
   </style>
 
   <script>
-    // PASTE YOUR GOOGLE MAPS API KEY HERE
     const MAPS_KEY = "AIzaSyCNGxoiKjhICp-Qt2FHpn4XuXd0Nngf34g";
 
     const script = document.createElement("script");
@@ -112,10 +111,11 @@
     let scenicMarkers = [];
     let scenicInfoWindow;
 
+    // Tuned to avoid “motorway near lots of attractions = scenic”
     const SCENIC_TYPES = ["tourist_attraction", "park"];
-    const RADIUS_METERS = 2500;
-    const SAMPLE_EVERY_METERS = 8000;
-    const MAX_SAMPLES = 5;
+    const RADIUS_METERS = 700;
+    const SAMPLE_EVERY_METERS = 7000;
+    const MAX_SAMPLES = 6;
 
     const placeCache = new Map();
 
@@ -182,7 +182,6 @@
 
     function sampleAlongPath(points, everyMeters = SAMPLE_EVERY_METERS, maxSamples = MAX_SAMPLES) {
       if (!points || points.length === 0) return [];
-
       if (points.length === 1) return [points[0]];
 
       const samples = [points[0]];
@@ -248,9 +247,7 @@
     }
 
     function clearScenicMarkers() {
-      for (const marker of scenicMarkers) {
-        marker.setMap(null);
-      }
+      for (const marker of scenicMarkers) marker.setMap(null);
       scenicMarkers = [];
     }
 
@@ -285,6 +282,81 @@
       }
     }
 
+    function isMotorwayText(text) {
+      if (!text) return false;
+      const t = text.toLowerCase();
+
+      return (
+        t.includes("motorway") ||
+        /\bm\d+\b/i.test(text) ||
+        t.includes("merge onto m") ||
+        t.includes("take the ramp") ||
+        t.includes("slip road")
+      );
+    }
+
+    function getRouteMotorwayStats(route) {
+      const leg = route?.legs?.[0];
+      const steps = leg?.steps || [];
+
+      let motorwayMeters = 0;
+      let totalMeters = 0;
+
+      for (const step of steps) {
+        const dist = step?.distance?.value ?? 0;
+        totalMeters += dist;
+
+        const instruction = step?.instructions || "";
+        const roadText = step?.maneuver || "";
+        const combined = `${instruction} ${roadText}`;
+
+        if (isMotorwayText(combined)) {
+          motorwayMeters += dist;
+        }
+      }
+
+      const motorwayRatio = totalMeters > 0 ? motorwayMeters / totalMeters : 0;
+
+      return {
+        motorwayMeters,
+        totalMeters,
+        motorwayRatio
+      };
+    }
+
+    function findNearestStep(sample, steps) {
+      let best = null;
+      let bestDist = Infinity;
+
+      for (const step of steps) {
+        const stepPath = step?.path || [];
+        for (const p of stepPath) {
+          const point = {
+            lat: typeof p.lat === "function" ? p.lat() : p.lat,
+            lng: typeof p.lng === "function" ? p.lng() : p.lng
+          };
+          const d = haversineMeters(sample, point);
+          if (d < bestDist) {
+            bestDist = d;
+            best = step;
+          }
+        }
+      }
+
+      return { step: best, distance: bestDist };
+    }
+
+    function isSampleOnMotorway(sample, route) {
+      const steps = route?.legs?.[0]?.steps || [];
+      if (!steps.length) return false;
+
+      const nearest = findNearestStep(sample, steps);
+      if (!nearest.step) return false;
+
+      const text = `${nearest.step.instructions || ""} ${nearest.step.maneuver || ""}`;
+      return isMotorwayText(text);
+    }
+
     async function scenicPlacesAtPoint({ placesService, lat, lng }) {
       const all = [];
 
@@ -315,11 +387,21 @@
       const samples = samplesOverride || sampleAlongPath(path, SAMPLE_EVERY_METERS, MAX_SAMPLES);
 
       let places = [];
+      let scenicSamplesUsed = 0;
+      let motorwaySamplesSkipped = 0;
 
       for (let idx = 0; idx < samples.length; idx++) {
         onProgress?.(idx + 1, samples.length);
 
         const point = samples[idx];
+
+        if (isSampleOnMotorway(point, route)) {
+          motorwaySamplesSkipped += 1;
+          continue;
+        }
+
+        scenicSamplesUsed += 1;
+
         const results = await scenicPlacesAtPoint({
           placesService,
           lat: point.lat,
@@ -343,6 +425,9 @@
       const distance = leg?.distance?.value ?? 0;
       const duration = leg?.duration?.value ?? 0;
 
+      const motorwayStats = getRouteMotorwayStats(route);
+      const motorwayPenalty = motorwayStats.motorwayRatio * 120;
+
       return {
         scenicCount: unique.length,
         ratingBonus,
@@ -350,14 +435,19 @@
         distance,
         duration,
         samplesUsed: samples.length,
-        scenicPlaces: unique
+        scenicSamplesUsed,
+        motorwaySamplesSkipped,
+        scenicPlaces: unique,
+        motorwayMeters: motorwayStats.motorwayMeters,
+        motorwayRatio: motorwayStats.motorwayRatio,
+        motorwayPenalty
       };
     }
 
     function detourPenalty(candidate, baseline) {
       const detourDist = (candidate.distance - baseline.distance) / Math.max(1, baseline.distance);
       const detourDur = (candidate.duration - baseline.duration) / Math.max(1, baseline.duration);
-      return detourDist * 10 + detourDur * 6;
+      return detourDist * 12 + detourDur * 8;
     }
 
     async function waitForGoogle() {
@@ -457,7 +547,7 @@
         completedSteps += routeSamples[i].length;
 
         const penalty = detourPenalty(result, baseline);
-        const finalScore = result.rawScenic - penalty;
+        const finalScore = result.rawScenic - penalty - result.motorwayPenalty;
 
         scored.push({
           i,
@@ -482,7 +572,10 @@
         <div class="muted">
           Scenic places: ${winner.scenicCount} • Bonus: ${winner.ratingBonus}
           • Samples checked: ${winner.samplesUsed}
-          • Routes found: ${routes.length}
+          • Scenic samples used: ${winner.scenicSamplesUsed}
+          • Motorway samples skipped: ${winner.motorwaySamplesSkipped}
+          • Motorway share: ${(winner.motorwayRatio * 100).toFixed(0)}%
+          • Motorway penalty: ${winner.motorwayPenalty.toFixed(1)}
           • Detour penalty: ${winner.penalty.toFixed(2)}
           • Final score: ${winner.finalScore.toFixed(2)}
         </div>
