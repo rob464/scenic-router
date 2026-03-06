@@ -974,7 +974,18 @@
       addScenicMarkers(winner.scenicPlaces);
       finishProgress();
 
-      const explanation = buildRouteExplanation(winner.route, winner.scenicPlaces, winner);
+const fallbackExplanation = buildRouteExplanation(winner.route, winner.scenicPlaces, winner);
+
+const explanationFacts = buildExplanationFacts(
+  winner.route,
+  winner.scenicPlaces,
+  winner,
+  origin,
+  destination
+);
+
+const llmExplanation = await getLlmRouteExplanation(explanationFacts);
+const explanation = llmExplanation || fallbackExplanation;
 
       meta.innerHTML = `
         <div><b>Chosen scenic route</b> (route #${winner.routeIndex + 1} of ${winner.directionsResult.routes.length})</div>
