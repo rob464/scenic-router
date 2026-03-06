@@ -17,7 +17,8 @@ export default async function handler(req, res) {
       scenicHighlights = [],
       failteHighlights = [],
       quietRoadInstruction,
-      naturalHighlightsCount = 0
+      naturalHighlightsCount = 0,
+      coastalHighlightsCount = 0
     } = req.body || {};
 
     const payload = {
@@ -29,11 +30,12 @@ export default async function handler(req, res) {
             {
               type: "input_text",
               text:
-                 "You write short, natural, friendly route explanations for a scenic driving app. " +
-  "Use only the facts provided. Do not invent landmarks, roads, exits, or scenery. " +
-  "Prefer natural scenery over commercial attractions. " +
-  "Write in a warm human tone, like a helpful travel companion. " +
-  "Keep the answer to 2-4 sentences, under 110 words."
+                "You write short, natural, friendly route explanations for a scenic driving app. " +
+                "Use only the facts provided. Do not invent landmarks, roads, exits, or scenery. " +
+                "When mentioning a landmark, include its location context naturally if one is provided, " +
+                "for example: 'the Garden of Remembrance at Parnell Square in Dublin'. " +
+                "Prefer natural scenery over commercial attractions. " +
+                "Keep the answer to 2-4 sentences, under 110 words."
             }
           ]
         },
@@ -50,7 +52,8 @@ export default async function handler(req, res) {
                 scenicHighlights,
                 failteHighlights,
                 quietRoadInstruction,
-                naturalHighlightsCount
+                naturalHighlightsCount,
+                coastalHighlightsCount
               })
             }
           ]
@@ -86,7 +89,9 @@ export default async function handler(req, res) {
       "";
 
     return res.status(200).json({
-      explanation: text || "This route was chosen because it stays closer to scenic highlights and spends less time on motorway-heavy sections."
+      explanation:
+        text ||
+        "This route was chosen because it stays closer to scenic highlights and spends less time on motorway-heavy sections."
     });
   } catch (err) {
     return res.status(500).json({
