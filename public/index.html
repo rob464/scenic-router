@@ -1101,7 +1101,7 @@ if (failteMatch) {
     function detourPenalty(candidate, baseline) {
       const detourDist = (candidate.distance - baseline.distance) / Math.max(1, baseline.distance);
       const detourDur = (candidate.duration - baseline.duration) / Math.max(1, baseline.duration);
-      return detourDist * 8 + detourDur * 5;
+      return detourDist * 4 + detourDur * 3;
     }
 
     async function waitForGoogle() {
