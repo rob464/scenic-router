@@ -134,36 +134,7 @@
       color: var(--text);
       box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
     }
-.route-title {
-  font-size: 20px;
-  font-weight: 600;
-  margin-top: 24px;
-  margin-bottom: 8px;
-}
 
-#explanation {
-  background: #eef4ff;
-  border-left: 4px solid #2563eb;
-  padding: 16px 18px;
-  border-radius: 10px;
-  margin-bottom: 20px;
-  font-size: 15px;
-  line-height: 1.6;
-}
-
-.nuts-title {
-  font-size: 16px;
-  margin-top: 10px;
-  opacity: 0.75;
-}
-
-#meta {
-  margin-top: 8px;
-  padding: 14px;
-  background: #f8fafc;
-  border-radius: 10px;
-  font-size: 14px;
-}
     input::placeholder {
       color: #94a3b8;
     }
@@ -213,7 +184,7 @@
     }
 
     #meta {
-      padding: 18px 20px;
+      padding: 20px 22px;
       border-radius: 22px;
       color: var(--text);
       font-size: 0.93rem;
@@ -225,13 +196,129 @@
       color: var(--muted);
     }
 
+    .results-block + .results-block {
+      margin-top: 20px;
+    }
+
+    .route-title {
+      font-size: 1.18rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin: 0 0 10px;
+    }
+
+    .nuts-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      text-transform: none;
+      color: var(--muted);
+      margin: 0 0 8px;
+    }
+
     #whyBox {
-      margin-top: 14px;
-      padding: 14px 16px;
-      background: linear-gradient(180deg, #f8fbff 0%, #f8fafc 100%);
-      border: 1px solid rgba(148, 163, 184, 0.22);
+      padding: 18px 18px;
+      background: linear-gradient(180deg, #eef4ff 0%, #f8fbff 100%);
+      border: 1px solid rgba(96, 165, 250, 0.35);
+      border-left: 5px solid var(--primary);
       border-radius: 18px;
-      line-height: 1.65;
+      line-height: 1.72;
+      color: var(--text);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    }
+
+    #whyBox p:first-child {
+      margin-top: 0;
+    }
+
+    #whyBox p:last-child {
+      margin-bottom: 0;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin: 0 0 12px;
+      letter-spacing: -0.02em;
+    }
+
+    #stopsSection {
+      background: var(--surface-strong);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      border-radius: 22px;
+      padding: 20px 22px;
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    .stops-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+      margin-top: 10px;
+    }
+
+    .stop-card {
+      display: block;
+      text-decoration: none;
+      color: inherit;
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+      transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    }
+
+    .stop-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 30px rgba(15, 23, 42, 0.10);
+      border-color: #cbd5e1;
+    }
+
+    .stop-image {
+      width: 100%;
+      height: 140px;
+      object-fit: cover;
+      display: block;
+      background: linear-gradient(135deg, #eef2ff, #e2e8f0);
+    }
+
+    .stop-body {
+      padding: 12px 13px 14px;
+    }
+
+    .stop-name {
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.3;
+      margin-bottom: 6px;
+    }
+
+    .stop-meta {
+      font-size: 13px;
+      color: #475569;
+      line-height: 1.45;
+    }
+
+    .stop-tag {
+      display: inline-block;
+      margin-top: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #1d4ed8;
+      background: #eff6ff;
+      border-radius: 999px;
+      padding: 5px 8px;
+    }
+
+    .stops-empty {
+      background: #f8fafc;
+      border: 1px dashed #cbd5e1;
+      color: #475569;
+      border-radius: 12px;
+      padding: 14px;
     }
 
     #progressWrap {
@@ -364,6 +451,11 @@
   </div>
 
   <div id="meta" class="muted">Enter an origin and destination.</div>
+
+  <section id="stopsSection">
+    <h3 class="section-title">Scenic stops</h3>
+    <div id="stops"></div>
+  </section>
 
   <div id="progressWrap">
     <span id="progressLabel">Scoring routes...</span>
@@ -1257,6 +1349,90 @@
       return detourDist * 8 + detourDur * 5;
     }
 
+    function placePhotoUrl(place, maxWidth = 800) {
+      try {
+        const photo = place?.photos?.[0];
+        if (!photo || typeof photo.getUrl !== "function") return "";
+        return photo.getUrl({ maxWidth });
+      } catch {
+        return "";
+      }
+    }
+
+    function placeMapsUrl(place) {
+      const q = encodeURIComponent(place.name || "Scenic stop");
+      if (place.place_id) {
+        return `https://www.google.com/maps/search/?api=1&query=${q}&query_place_id=${place.place_id}`;
+      }
+      if (place.geometry?.location) {
+        const loc = place.geometry.location;
+        const lat = typeof loc.lat === "function" ? loc.lat() : loc.lat;
+        const lng = typeof loc.lng === "function" ? loc.lng() : loc.lng;
+        if (typeof lat === "number" && typeof lng === "number") {
+          return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+        }
+      }
+      return `https://www.google.com/maps/search/?api=1&query=${q}`;
+    }
+
+    function niceTypeLabel(place) {
+      const types = place?.types || [];
+      if (types.includes("natural_feature")) return "Natural feature";
+      if (types.includes("park")) return "Park";
+      if (types.includes("tourist_attraction")) return "Attraction";
+      return "Scenic stop";
+    }
+
+    function renderScenicStops(places) {
+      const section = document.getElementById("stopsSection");
+      const el = document.getElementById("stops");
+      if (!section || !el) return;
+
+      section.style.display = "block";
+
+      if (!places || !places.length) {
+        el.innerHTML = `<div class="stops-empty">No featured scenic stops were found for this route yet.</div>`;
+        return;
+      }
+
+      const topPlaces = places.slice(0, 6);
+
+      el.innerHTML = `
+        <div class="stops-grid">
+          ${topPlaces.map((place) => {
+            const photo = placePhotoUrl(place);
+            const href = placeMapsUrl(place);
+            const rating = typeof place.rating === "number" ? `★ ${place.rating.toFixed(1)}` : "";
+            const votes = typeof place.user_ratings_total === "number" && place.user_ratings_total > 0
+              ? `(${place.user_ratings_total})`
+              : "";
+            const failte = place.failteMatch ? `<div class="stop-tag">Fáilte-listed</div>` : "";
+            const subtitle = [niceTypeLabel(place), [rating, votes].filter(Boolean).join(" ")].filter(Boolean).join(" · ");
+            const safeName = (place.name || "Scenic stop")
+              .replace(/&/g, "&amp;")
+              .replace(/</g, "&lt;")
+              .replace(/>/g, "&gt;")
+              .replace(/"/g, "&quot;");
+
+            return `
+              <a class="stop-card" href="${href}" target="_blank" rel="noopener noreferrer">
+                ${
+                  photo
+                    ? `<img class="stop-image" src="${photo}" alt="${safeName}">`
+                    : `<div class="stop-image"></div>`
+                }
+                <div class="stop-body">
+                  <div class="stop-name">${safeName}</div>
+                  <div class="stop-meta">${subtitle}</div>
+                  ${failte}
+                </div>
+              </a>
+            `;
+          }).join("")}
+        </div>
+      `;
+    }
+
     function computeFinalScore(result, detour, routeOptionCount) {
       let finalScore = result.rawScenic - detour - result.motorwayPenalty;
 
@@ -1440,8 +1616,12 @@
       const meta = document.getElementById("meta");
       const origin = document.getElementById("origin").value.trim();
       const destination = document.getElementById("destination").value.trim();
+      const stopsSection = document.getElementById("stopsSection");
+      const stopsEl = document.getElementById("stops");
 
       clearScenicMarkers();
+      if (stopsSection) stopsSection.style.display = "none";
+      if (stopsEl) stopsEl.innerHTML = "";
 
       if (!origin || !destination) {
         meta.textContent = "Please enter both origin and destination.";
@@ -1581,31 +1761,34 @@
       const explanation = llmExplanation || fallbackExplanation;
 
       meta.innerHTML = `
-               <div id="whyBox">
-          <b>Your Scenic Route:</b><br>
-          ${explanation}
-        </div>
-        
-        <div><b>The Nuts & Bolts</b> (route #${winner.routeIndex + 1} of ${winner.directionsResult.routes.length})</div>
-        <div>${fmtKm(winner.distance)} • ${fmtMin(winner.duration)}</div>
-        <div class="muted">
-          Scenic places: ${winner.scenicCount}
-          • Natural highlights: ${winner.naturalCount}
-          • Coastal highlights: ${winner.coastalCount}
-          • Bonus: ${winner.ratingBonus}
-          • Weighted scenic score: ${winner.weightedScenicScore}
-          • Search radius: ${winner.searchRadiusUsed}m
-          • Samples checked: ${winner.samplesUsed}
-          • Scenic samples used: ${winner.scenicSamplesUsed}
-          • Motorway samples skipped: ${winner.motorwaySamplesSkipped}
-          • Total route options considered: ${routeEntries.length}
-          • Motorway share: ${(winner.motorwayRatio * 100).toFixed(0)}%
-          • Motorway penalty: ${winner.motorwayPenalty.toFixed(1)}
-          • Detour penalty: ${winner.detourPenaltyValue.toFixed(2)}
-          • Final score: ${winner.finalScore.toFixed(2)}
+        <div class="results-block">
+          <div class="route-title">Your scenic route:</div>
+          <div id="whyBox">${explanation}</div>
         </div>
 
+        <div class="results-block">
+          <div class="nuts-title">The Nuts &amp; Bolts:</div>
+          <div><b>Route #${winner.routeIndex + 1}</b> of ${winner.directionsResult.routes.length}</div>
+          <div>${fmtKm(winner.distance)} • ${fmtMin(winner.duration)}</div>
+          <div class="muted">
+            Scenic places: ${winner.scenicCount}
+            • Natural highlights: ${winner.naturalCount}
+            • Coastal highlights: ${winner.coastalCount}
+            • Bonus: ${winner.ratingBonus}
+            • Weighted scenic score: ${winner.weightedScenicScore}
+            • Search radius: ${winner.searchRadiusUsed}m
+            • Samples checked: ${winner.samplesUsed}
+            • Scenic samples used: ${winner.scenicSamplesUsed}
+            • Motorway samples skipped: ${winner.motorwaySamplesSkipped}
+            • Total route options considered: ${routeEntries.length}
+            • Motorway share: ${(winner.motorwayRatio * 100).toFixed(0)}%
+            • Motorway penalty: ${winner.motorwayPenalty.toFixed(1)}
+            • Detour penalty: ${winner.detourPenaltyValue.toFixed(2)}
+            • Final score: ${winner.finalScore.toFixed(2)}
+          </div>
+        </div>
       `;
+      renderScenicStops(winner.scenicPlaces || []);
     }
 
     init();
