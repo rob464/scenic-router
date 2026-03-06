@@ -1,3 +1,4 @@
+```html
 <!doctype html>
 <html>
 <head>
@@ -34,10 +35,6 @@
       background: #111827;
       color: white;
       border: none;
-    }
-
-    button:hover {
-      opacity: 0.95;
     }
 
     #meta {
@@ -114,10 +111,11 @@
   <script>
     let map, directionsService, directionsRenderer, placesService;
 
-    const SCENIC_TYPES = ["tourist_attraction"];
-    const RADIUS_METERS = 1200;
-    const SAMPLE_EVERY_METERS = 12000;
-    const MAX_SAMPLES = 3;
+    // Better balance: still reasonably fast, much more likely to find scenic results
+    const SCENIC_TYPES = ["tourist_attraction", "park"];
+    const RADIUS_METERS = 2500;
+    const SAMPLE_EVERY_METERS = 8000;
+    const MAX_SAMPLES = 5;
 
     const placeCache = new Map();
 
@@ -146,7 +144,7 @@
       bar.style.width = "100%";
       bar.style.background = "#16a34a";
       document.getElementById("progressLabel").textContent = "Done";
-      setTimeout(hideProgress, 700);
+      setTimeout(hideProgress, 900);
     }
 
     function fmtKm(m) {
@@ -262,13 +260,13 @@
     }
 
     function uniqByPlaceId(items) {
-      const map = new Map();
+      const out = new Map();
       for (const item of items) {
-        if (item?.place_id && !map.has(item.place_id)) {
-          map.set(item.place_id, item);
+        if (item?.place_id && !out.has(item.place_id)) {
+          out.set(item.place_id, item);
         }
       }
-      return [...map.values()];
+      return [...out.values()];
     }
 
     async function scenicPlacesAtPoint({ placesService, lat, lng }) {
@@ -297,8 +295,8 @@
     }
 
     async function scoreRoute({ route, placesService, onProgress, samplesOverride }) {
-      const encoded = route.overview_polyline?.points;
-      const path = decodePolyline(encoded || "");
+      const encoded = route.overview_polyline?.points || "";
+      const path = decodePolyline(encoded);
       const samples = samplesOverride || sampleAlongPath(path, SAMPLE_EVERY_METERS, MAX_SAMPLES);
 
       let places = [];
@@ -335,7 +333,8 @@
         ratingBonus,
         rawScenic: unique.length + ratingBonus,
         distance,
-        duration
+        duration,
+        samplesUsed: samples.length
       };
     }
 
@@ -459,6 +458,8 @@
         <div>${fmtKm(winner.distance)} • ${fmtMin(winner.duration)}</div>
         <div class="muted">
           Scenic places: ${winner.scenicCount} • Bonus: ${winner.ratingBonus}
+          • Samples checked: ${winner.samplesUsed}
+          • Routes found: ${routes.length}
           • Detour penalty: ${winner.penalty.toFixed(2)}
           • Final score: ${winner.finalScore.toFixed(2)}
         </div>
@@ -469,3 +470,4 @@
   </script>
 </body>
 </html>
+```
