@@ -118,7 +118,7 @@
       background: #f9fafb;
       border: 1px solid #e5e7eb;
       border-radius: 10px;
-      line-height: 1.5;
+      line-height: 1.55;
     }
 
     #progressWrap {
@@ -182,11 +182,10 @@
 
   <script>
     const MAPS_KEY = "AIzaSyCNGxoiKjhICp-Qt2FHpn4XuXd0Nngf34g";
-
-    const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_KEY}&libraries=places&v=weekly`;
-    script.defer = true;
-    document.head.appendChild(script);
+    const mapsScript = document.createElement("script");
+    mapsScript.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_KEY}&v=weekly`;
+    mapsScript.defer = true;
+    document.head.appendChild(mapsScript);
   </script>
 </head>
 <body>
@@ -224,23 +223,22 @@
   <div id="map"></div>
 
   <script>
-    let map, directionsService, directionsRenderer, placesService;
+    let map, directionsService, directionsRenderer, infoWindow;
     let scenicMarkers = [];
-    let scenicInfoWindow;
     let failteAttractions = [];
 
     let lastWinner = null;
     let lastOrigin = "";
     let lastDestination = "";
 
-    const SCENIC_TYPES = ["natural_feature", "park", "tourist_attraction"];
-    let RADIUS_METERS = 700;
-    const EXPANDED_RADIUS = 1700;
-    const MAX_SAMPLES = 4;
-    const MIN_SCENIC_SCORE = 90;
-    const MAX_WAYPOINT_CANDIDATES = 3;
+    const MAX_SAMPLES = 3;
+    const MIN_SCENIC_SCORE = 80;
+    const OSM_BASE_RADIUS_METERS = 900;
+    const OSM_EXPANDED_RADIUS_METERS = 1800;
+    const MAX_WAYPOINT_CANDIDATES = 1;
+    const MAX_SCENIC_MARKERS = 8;
 
-    const placeCache = new Map();
+    const osmCache = new Map();
 
     function showProgress() {
       document.getElementById("progressWrap").style.display = "block";
@@ -299,10 +297,6 @@
       return 2 * R * Math.asin(Math.min(1, Math.sqrt(s)));
     }
 
-    function fmtPlaceLabel(place) {
-      return [place.name, place.context].filter(Boolean).join(" — ");
-    }
-
     function routeToPoints(route) {
       if (route?.overview_path?.length) {
         return route.overview_path.map(p => ({
@@ -318,7 +312,7 @@
       if (points.length <= 2) {
         return points.map((p, i) => ({
           ...p,
-          routeProgress: points.length === 1 ? 0.5 : i / (points.length - 1)
+          routeProgress: points.length === 1 ? 0.5 : i / Math.max(1, points.length - 1)
         }));
       }
 
@@ -330,9 +324,7 @@
         cumulative.push(total);
       }
 
-      if (total === 0) {
-        return [{ ...points[0], routeProgress: 0.5 }];
-      }
+      if (total === 0) return [{ ...points[0], routeProgress: 0.5 }];
 
       const startPct = 0.18;
       const endPct = 0.82;
@@ -370,73 +362,15 @@
       return 0.6;
     }
 
-    function cacheKey(lat, lng, type) {
-      return `${lat.toFixed(3)},${lng.toFixed(3)},${RADIUS_METERS},${type}`;
-    }
-
-    function isMotorwayText(text) {
-      if (!text) return false;
-      const t = text.toLowerCase();
-      return (
-        t.includes("motorway") ||
-        /\bm\d+\b/i.test(text) ||
-        t.includes("merge onto m") ||
-        t.includes("take the ramp") ||
-        t.includes("slip road")
-      );
-    }
-
-    function getStepText(step) {
-      return `${stripHtml(step?.instructions || "")} ${step?.maneuver || ""}`.trim();
-    }
-
-    function getRouteMotorwayStats(route) {
-      const leg = route?.legs?.[0];
-      const steps = leg?.steps || [];
-
-      let motorwayMeters = 0;
-      let totalMeters = 0;
-
-      for (const step of steps) {
-        const dist = step?.distance?.value ?? 0;
-        totalMeters += dist;
-        if (isMotorwayText(getStepText(step))) motorwayMeters += dist;
-      }
-
-      return {
-        motorwayMeters,
-        totalMeters,
-        motorwayRatio: totalMeters > 0 ? motorwayMeters / totalMeters : 0
-      };
-    }
-
-    function findNearestStep(sample, route) {
-      const steps = route?.legs?.[0]?.steps || [];
-      let best = null;
-      let bestDist = Infinity;
-
-      for (const step of steps) {
-        const stepPath = step?.path || [];
-        for (const p of stepPath) {
-          const point = {
-            lat: typeof p.lat === "function" ? p.lat() : p.lat,
-            lng: typeof p.lng === "function" ? p.lng() : p.lng
-          };
-          const d = haversineMeters(sample, point);
-          if (d < bestDist) {
-            bestDist = d;
-            best = step;
-          }
-        }
-      }
-
-      return { step: best, distance: bestDist };
-    }
-
-    function isSampleOnMotorway(sample, route) {
-      const nearest = findNearestStep(sample, route);
-      if (!nearest.step) return false;
-      return isMotorwayText(getStepText(nearest.step));
+    function normalizeName(s) {
+      return (s || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/&/g, " and ")
+        .replace(/[^a-z0-9 ]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
     }
 
     function parseCsv(text) {
@@ -492,7 +426,9 @@
         const res = await fetch("/attractions.csv");
         if (!res.ok) throw new Error(`CSV load failed: ${res.status}`);
         const text = await res.text();
-        failteAttractions = parseCsv(text).map(row => {
+        const parsed = parseCsv(text);
+
+        failteAttractions = parsed.map(row => {
           const lat = Number(
             row.latitude || row.Latitude || row.lat || row.Lat || row.geo_lat || ""
           );
@@ -501,7 +437,6 @@
           );
 
           return {
-            raw: row,
             name:
               row.name ||
               row.Name ||
@@ -521,7 +456,16 @@
               row.Town ||
               row.county ||
               row.County ||
+              "",
+            normalizedName: normalizeName(
+              row.name ||
+              row.Name ||
+              row.title ||
+              row.Title ||
+              row.BusinessName ||
+              row.business_name ||
               ""
+            )
           };
         }).filter(r => r.name);
 
@@ -532,480 +476,36 @@
       }
     }
 
-    function normalizeName(s) {
-      return (s || "")
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/&/g, " and ")
-        .replace(/[^a-z0-9 ]/g, " ")
-        .replace(/\b(visitor centre|visitor center|office|official site)\b/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
+    function getFeatureName(feature) {
+      return feature.tags?.name || feature.name || "";
     }
 
-    function getPlaceLatLng(place) {
-      const loc = place.geometry?.location;
-      if (!loc) return null;
-      return {
-        lat: typeof loc.lat === "function" ? loc.lat() : loc.lat,
-        lng: typeof loc.lng === "function" ? loc.lng() : loc.lng
-      };
+    function getFeatureType(feature) {
+      if (feature.tags?.tourism === "viewpoint") return "viewpoint";
+      if (feature.tags?.waterway === "waterfall") return "waterfall";
+      if (feature.tags?.natural) return feature.tags.natural;
+      if (feature.tags?.leisure === "park") return "park";
+      if (feature.tags?.historic) return feature.tags.historic;
+      return "scenic";
     }
 
-    function matchFailteAttraction(place) {
-      if (!failteAttractions.length) return null;
-
-      const placeName = normalizeName(place.name || "");
-      const placePoint = getPlaceLatLng(place);
-      if (!placeName || !placePoint) return null;
-
-      let best = null;
-      let bestScore = -Infinity;
-
-      for (const row of failteAttractions) {
-        const csvName = normalizeName(row.name);
-        if (!csvName || row.lat == null || row.lng == null) continue;
-
-        const dist = haversineMeters(placePoint, { lat: row.lat, lng: row.lng });
-
-        let nameScore = 0;
-        if (placeName === csvName) nameScore = 100;
-        else if (placeName.includes(csvName) || csvName.includes(placeName)) nameScore = 70;
-        else continue;
-
-        if (dist > 2500) continue;
-
-        const score = nameScore - dist / 60;
-
-        if (score > bestScore) {
-          bestScore = score;
-          best = {
-            matchedName: row.name,
-            context: row.context || "",
-            distanceMeters: dist
-          };
-        }
+    function getFeaturePoint(feature) {
+      if (feature.center && Number.isFinite(feature.center.lat) && Number.isFinite(feature.center.lon)) {
+        return { lat: feature.center.lat, lng: feature.center.lon };
       }
-
-      return best;
+      if (Number.isFinite(feature.lat) && Number.isFinite(feature.lon)) {
+        return { lat: feature.lat, lng: feature.lon };
+      }
+      return null;
     }
 
-    function isNonScenicCommercial(place) {
-      const types = place.types || [];
-      const name = (place.name || "").toLowerCase();
-
-      const badTypes = [
-        "travel_agency",
-        "real_estate_agency",
-        "insurance_agency",
-        "finance",
-        "accounting",
-        "car_dealer",
-        "store",
-        "lodging"
-      ];
-
-      const badWords = [
-        "office",
-        "tour operator",
-        "tours",
-        "travel",
-        "booking",
-        "agency",
-        "visitor centre",
-        "visitor center"
-      ];
-
-      if (types.some(t => badTypes.includes(t))) return true;
-      if (badWords.some(word => name.includes(word))) return true;
-
-      return false;
-    }
-
-    function isClosedPlace(place) {
-      return place.business_status === "CLOSED_PERMANENTLY";
-    }
-
-    function coastalKeywordScore(place) {
-      const name = (place.name || "").toLowerCase();
-      const types = place.types || [];
-      let score = 0;
-
-      if (/\bbeach\b|\bcoast\b|\bcliff\b|\bharbour\b|\bharbor\b|\bmarina\b|\bpier\b|\bbay\b|\blighthouse\b|\bcove\b|\bstrand\b/.test(name)) {
-        score += 12;
-      }
-
-      if (types.includes("natural_feature")) {
-        if (/\bbeach\b|\bcliff\b|\bbay\b|\bcove\b/.test(name)) {
-          score += 8;
-        }
-      }
-
-      return score;
-    }
-
-    function driveByVisibilityScore(place) {
-      const name = (place.name || "").toLowerCase();
-      const types = place.types || [];
-      let score = 0;
-
-      if (/\bcliff\b|\bbeach\b|\bcoast\b|\bbay\b|\bcove\b|\blake\b|\blough\b|\briver\b|\bmountain\b|\bwaterfall\b|\bfalls\b|\bharbour\b|\bharbor\b|\bstrand\b/.test(name)) {
-        score += 12;
-      }
-
-      if (/\bviewpoint\b|\blookout\b|\bscenic\b|\bpanorama\b/.test(name)) {
-        score += 10;
-      }
-
-      if (types.includes("natural_feature")) score += 8;
-      if (types.includes("park")) score += 3;
-
-      if (/\bmuseum\b|\bgallery\b|\bvisitor centre\b|\bvisitor center\b|\bheritage centre\b|\bmemorial garden\b|\bgarden\b/.test(name)) {
-        score -= 6;
-      }
-
-      if (/\babbey\b|\bcastle\b|\bcathedral\b|\bmonument\b/.test(name)) {
-        score -= 2;
-      }
-
-      return score;
-    }
-
-    function placeWeight(place, queriedType = "") {
-      if (isNonScenicCommercial(place)) return -10;
-      if (isClosedPlace(place)) return -10;
-
-      const name = (place.name || "").toLowerCase();
-      const types = place.types || [];
-      let score = 0;
-
-      if (queriedType === "natural_feature" || types.includes("natural_feature")) score += 12;
-      if (queriedType === "park" || types.includes("park")) score += 8;
-      if (queriedType === "tourist_attraction" || types.includes("tourist_attraction")) score += 3;
-
-      if (/\blake\b|\blough\b|\bforest\b|\bwoods\b|\bmountain\b|\bcliff\b|\bfalls\b|\bwaterfall\b|\bbeach\b|\bcoast\b|\bharbour\b|\bharbor\b|\briver\b/.test(name)) {
-        score += 8;
-      }
-
-      score += coastalKeywordScore(place);
-      score += driveByVisibilityScore(place);
-
-      if (/\babbey\b|\bcastle\b|\bmonument\b|\bcathedral\b|\bfort\b|\bheritage\b|\bhistoric\b/.test(name)) {
-        score += 3;
-      }
-
-      const failteMatch = matchFailteAttraction(place);
-      if (failteMatch) {
-        score += 45;
-
-        if (/\blake\b|\blough\b|\bforest\b|\bwoods\b|\bmountain\b|\bcliff\b|\bfalls\b|\bwaterfall\b|\bbeach\b|\bcoast\b|\bharbour\b|\bharbor\b|\briver\b|\bbay\b|\bcove\b|\blighthouse\b|\bstrand\b/.test(name)) {
-          score += 25;
-        }
-
-        place.failteMatch = failteMatch;
-      }
-
-      return score;
-    }
-
-    function uniqBestPlaces(items) {
-      const best = new Map();
-
-      for (const item of items) {
-        if (!item?.place_id) continue;
-        const existing = best.get(item.place_id);
-        if (!existing || (item.scenicWeight || 0) > (existing.scenicWeight || 0)) {
-          best.set(item.place_id, item);
-        }
-      }
-
-      return [...best.values()];
-    }
-
-    function clearScenicMarkers() {
-      for (const marker of scenicMarkers) marker.setMap(null);
-      scenicMarkers = [];
-    }
-
-    function addScenicMarkers(places) {
-      clearScenicMarkers();
-
-      const topPlaces = [...places]
-        .sort((a, b) => (b.scenicWeight || 0) - (a.scenicWeight || 0))
-        .slice(0, 8);
-
-      for (const place of topPlaces) {
-        const loc = place.geometry?.location;
-        if (!loc) continue;
-
-        const marker = new google.maps.Marker({
-          map,
-          position: loc,
-          title: place.name,
-          label: "★"
-        });
-
-        marker.addListener("click", () => {
-          const failteLine = place.failteMatch
-            ? `<br>Fáilte Ireland match: ${place.failteMatch.matchedName}${place.failteMatch.context ? ` — ${place.failteMatch.context}` : ""}`
-            : "";
-
-          scenicInfoWindow.setContent(`
-            <div style="font-size:13px; max-width:240px;">
-              <strong>${place.name || "Scenic place"}</strong><br>
-              Scenic score: ${place.scenicWeight ?? 0}<br>
-              Rating: ${place.rating ?? "n/a"}<br>
-              Reviews: ${place.user_ratings_total ?? 0}
-              ${failteLine}
-            </div>
-          `);
-          scenicInfoWindow.open(map, marker);
-        });
-
-        scenicMarkers.push(marker);
-      }
-    }
-
-    async function scenicPlacesAtPoint({ placesService, lat, lng }) {
-      const all = [];
-
-      for (const type of SCENIC_TYPES) {
-        const key = cacheKey(lat, lng, type);
-
-        let results;
-        if (placeCache.has(key)) {
-          results = placeCache.get(key);
-        } else {
-          results = await new Promise(resolve => {
-            let done = false;
-
-            const timer = setTimeout(() => {
-              if (done) return;
-              done = true;
-              resolve([]);
-            }, 3500);
-
-            placesService.nearbySearch(
-              { location: new google.maps.LatLng(lat, lng), radius: RADIUS_METERS, type },
-              (res, status) => {
-                if (done) return;
-                done = true;
-                clearTimeout(timer);
-
-                if (status === google.maps.places.PlacesServiceStatus.OK && res) resolve(res);
-                else resolve([]);
-              }
-            );
-          });
-
-          placeCache.set(key, results);
-        }
-
-        for (const place of results) {
-          const scenicWeight = placeWeight(place, type);
-          if (scenicWeight <= 0) continue;
-          all.push({ ...place, scenicWeight });
-        }
-      }
-
-      return all;
-    }
-
-    function rankScenicPlaces(places) {
-      return [...places].sort((a, b) => {
-        const aScore =
-          (a.scenicWeight || 0) +
-          (a.rating || 0) +
-          Math.min(Math.log10((a.user_ratings_total || 0) + 1), 3);
-
-        const bScore =
-          (b.scenicWeight || 0) +
-          (b.rating || 0) +
-          Math.min(Math.log10((b.user_ratings_total || 0) + 1), 3);
-
-        return bScore - aScore;
-      });
-    }
-
-    function describePlace(place) {
-      const name = place.name || "a scenic place";
-      const lower = name.toLowerCase();
-
-      if (/\blake\b|\blough\b/.test(lower)) return `the lake ${name}`;
-      if (/\bforest\b|\bwoods\b/.test(lower)) return `the forest area around ${name}`;
-      if (/\bbeach\b|\bstrand\b/.test(lower)) return `the coast near ${name}`;
-      if (/\bcliff\b|\bbay\b|\bcove\b/.test(lower)) return name;
-      if ((place.types || []).includes("natural_feature")) return `the natural landmark ${name}`;
-      if ((place.types || []).includes("park")) return `the park ${name}`;
-      return name;
-    }
-
-    function findMotorwayExitMoment(route) {
-      const steps = route?.legs?.[0]?.steps || [];
-      let seenMotorway = false;
-
-      for (let i = 0; i < steps.length; i++) {
-        const currentIsMotorway = isMotorwayText(getStepText(steps[i]));
-
-        if (currentIsMotorway) {
-          seenMotorway = true;
-          continue;
-        }
-
-        if (seenMotorway && !currentIsMotorway) {
-          const text = stripHtml(steps[i].instructions || "");
-          return text || "leave the motorway for quieter roads";
-        }
-      }
-
+    function featureContext(feature) {
+      const tags = feature.tags || {};
+      if (tags.natural) return tags.natural.replace(/_/g, " ");
+      if (tags.tourism) return tags.tourism.replace(/_/g, " ");
+      if (tags.historic) return tags.historic.replace(/_/g, " ");
+      if (tags.leisure) return tags.leisure.replace(/_/g, " ");
       return "";
-    }
-
-    function findLongestNonMotorwayStep(route) {
-      const steps = route?.legs?.[0]?.steps || [];
-      let bestStep = null;
-      let bestDistance = 0;
-
-      for (const step of steps) {
-        if (isMotorwayText(getStepText(step))) continue;
-        const dist = step?.distance?.value ?? 0;
-        if (dist > bestDistance) {
-          bestDistance = dist;
-          bestStep = step;
-        }
-      }
-
-      return bestStep;
-    }
-
-    function buildRouteExplanation(route, scenicPlaces, scoreData) {
-      const ranked = rankScenicPlaces(scenicPlaces).slice(0, 3);
-      const failteBoosted = scenicPlaces.filter(p => p.failteMatch).slice(0, 2);
-      const exitMoment = findMotorwayExitMoment(route);
-      const quietRoadStep = findLongestNonMotorwayStep(route);
-
-      let firstSentence = "";
-      if (ranked.length >= 2) {
-        firstSentence = `This route was chosen because it stays closer to real scenery, especially ${describePlace(ranked[0])} and ${describePlace(ranked[1])}.`;
-      } else if (ranked.length === 1) {
-        firstSentence = `This route was chosen because it stays close to ${describePlace(ranked[0])}, which scored highly as a natural or scenic stop.`;
-      } else {
-        firstSentence = `This route was chosen because it avoids motorway-heavy stretches where possible and leans toward quieter roads.`;
-      }
-
-      let failteSentence = "";
-      if (failteBoosted.length === 1) {
-        failteSentence = `${failteBoosted[0].name} is also listed in the Fáilte Ireland attractions data, which increased its score.`;
-      } else if (failteBoosted.length >= 2) {
-        failteSentence = `${failteBoosted[0].name} and ${failteBoosted[1].name} are also listed in the Fáilte Ireland attractions data, which increased this route’s score.`;
-      }
-
-      let secondSentence = "";
-      if (exitMoment) {
-        secondSentence = `It leaves the motorway when the directions say “${exitMoment}”, so more of the drive happens on roads where the scenery is actually visible.`;
-      }
-
-      let thirdSentence = "";
-      if (quietRoadStep) {
-        const txt = stripHtml(quietRoadStep.instructions || "");
-        if (txt) {
-          thirdSentence = `A key scenic section is “${txt}”.`;
-        }
-      }
-
-      let fourthSentence = "";
-      if (typeof scoreData.motorwayRatio === "number") {
-        fourthSentence = `About ${Math.round(scoreData.motorwayRatio * 100)}% of the route is motorway, and motorway segments were penalised during scoring.`;
-      }
-
-      return [firstSentence, failteSentence, secondSentence, thirdSentence, fourthSentence]
-        .filter(Boolean)
-        .join(" ");
-    }
-
-    function getPlaceContext(place) {
-      const vicinity = place.vicinity || place.formatted_address || "";
-      return vicinity.trim();
-    }
-
-    function buildExplanationFacts(route, scenicPlaces, scoreData, origin, destination) {
-      const ranked = rankScenicPlaces(scenicPlaces).slice(0, 3);
-      const failteBoosted = scenicPlaces.filter(p => p.failteMatch).slice(0, 2);
-      const motorwayExitInstruction = findMotorwayExitMoment(route) || "";
-      const quietRoadStep = findLongestNonMotorwayStep(route);
-      const quietRoadInstruction = quietRoadStep
-        ? stripHtml(quietRoadStep.instructions || "")
-        : "";
-
-      return {
-        origin,
-        destination,
-        motorwaySharePercent: Math.round((scoreData.motorwayRatio || 0) * 100),
-        motorwayExitInstruction,
-        scenicHighlights: ranked.map(p => ({
-          name: p.name || "",
-          context: getPlaceContext(p),
-          scenicWeight: p.scenicWeight || 0
-        })).filter(p => p.name),
-        failteHighlights: failteBoosted.map(p => ({
-          name: p.name || "",
-          context: getPlaceContext(p)
-        })).filter(p => p.name),
-        quietRoadInstruction,
-        naturalHighlightsCount: scoreData.naturalCount || 0,
-        coastalHighlightsCount: scoreData.coastalCount || 0
-      };
-    }
-
-    async function getLlmRouteExplanation(facts) {
-      try {
-        const r = await fetch("/api/explain-route", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(facts)
-        });
-
-        const data = await r.json();
-        if (!r.ok) {
-          console.warn("LLM explanation failed:", data);
-          return null;
-        }
-
-        return data.explanation || null;
-      } catch (err) {
-        console.warn("LLM explanation error:", err);
-        return null;
-      }
-    }
-
-    function scoreFailteProximity(route) {
-      if (!failteAttractions.length) return 0;
-
-      const path = routeToPoints(route);
-      let score = 0;
-
-      for (const attraction of failteAttractions) {
-        if (attraction.lat == null || attraction.lng == null) continue;
-
-        const point = { lat: attraction.lat, lng: attraction.lng };
-
-        for (const routePoint of path) {
-          const d = haversineMeters(routePoint, point);
-
-          if (d < 800) {
-            score += 35;
-            break;
-          }
-
-          if (d < 2000) {
-            score += 15;
-            break;
-          }
-        }
-      }
-
-      return score;
     }
 
     function scenicNameScore(name) {
@@ -1016,7 +516,7 @@
         score += 30;
       }
 
-      if (/\babbey\b|\bcastle\b|\bcathedral\b|\bfort\b|\bheritage\b|\bhistoric\b|\bmonument\b/.test(n)) {
+      if (/\babbey\b|\bcastle\b|\bcathedral\b|\bfort\b|\bheritage\b|\bhistoric\b|\bmonument\b|\bruins\b/.test(n)) {
         score += 10;
       }
 
@@ -1027,9 +527,161 @@
       return score;
     }
 
-    function scoreWaypointCandidate(attraction, routePoints) {
-      if (attraction.lat == null || attraction.lng == null) return -Infinity;
+    function driveByVisibilityScore(name, type) {
+      const n = (name || "").toLowerCase();
+      let score = 0;
 
+      if (/\bcliff\b|\bbeach\b|\bcoast\b|\bbay\b|\bcove\b|\blake\b|\blough\b|\briver\b|\bmountain\b|\bwaterfall\b|\bfalls\b|\bharbour\b|\bharbor\b|\bstrand\b|\bviewpoint\b|\blookout\b/.test(n)) {
+        score += 12;
+      }
+
+      if (type === "viewpoint" || type === "cliff" || type === "beach" || type === "bay" || type === "peak" || type === "water" || type === "waterfall") {
+        score += 10;
+      }
+
+      if (type === "park") score += 3;
+
+      if (/\bmuseum\b|\bgallery\b|\bgarden\b/.test(n)) {
+        score -= 6;
+      }
+
+      return score;
+    }
+
+    function matchFailteByName(name) {
+      const normalized = normalizeName(name);
+      if (!normalized) return null;
+
+      for (const row of failteAttractions) {
+        if (!row.normalizedName) continue;
+        if (normalized === row.normalizedName || normalized.includes(row.normalizedName) || row.normalizedName.includes(normalized)) {
+          return row;
+        }
+      }
+
+      return null;
+    }
+
+    function scoreOsmFeature(feature) {
+      const name = getFeatureName(feature);
+      const type = getFeatureType(feature);
+      const point = getFeaturePoint(feature);
+      if (!point) return null;
+
+      let score = 0;
+      score += scenicNameScore(name);
+      score += driveByVisibilityScore(name, type);
+
+      if (type === "viewpoint") score += 18;
+      if (type === "waterfall") score += 16;
+      if (["cliff", "beach", "bay", "coastline", "peak", "wood", "water", "heath", "scrub", "wetland"].includes(type)) score += 12;
+      if (["castle", "ruins", "monument"].includes(type)) score += 8;
+
+      const failteMatch = matchFailteByName(name);
+      if (failteMatch) {
+        score += 45;
+        if (/\blake\b|\blough\b|\bforest\b|\bwoods\b|\bmountain\b|\bcliff\b|\bbeach\b|\bcoast\b|\bbay\b|\bcove\b|\blighthouse\b|\bstrand\b/.test((name || "").toLowerCase())) {
+          score += 25;
+        }
+      }
+
+      if (score <= 0) return null;
+
+      return {
+        id: `${feature.type || "x"}-${feature.id || name}-${point.lat.toFixed(5)}-${point.lng.toFixed(5)}`,
+        name: name || type,
+        context: failteMatch?.context || featureContext(feature),
+        lat: point.lat,
+        lng: point.lng,
+        scenicWeight: score,
+        featureType: type,
+        failteMatch: failteMatch ? { matchedName: failteMatch.name, context: failteMatch.context } : null
+      };
+    }
+
+    function osmCacheKey(lat, lng, radius) {
+      return `${lat.toFixed(3)},${lng.toFixed(3)},${radius}`;
+    }
+
+    async function fetchOsmFeaturesNearPoint(lat, lng, radius) {
+      const key = osmCacheKey(lat, lng, radius);
+      if (osmCache.has(key)) return osmCache.get(key);
+
+      const query = `
+[out:json][timeout:12];
+(
+  nwr(around:${radius},${lat},${lng})["tourism"="viewpoint"];
+  nwr(around:${radius},${lat},${lng})["waterway"="waterfall"];
+  nwr(around:${radius},${lat},${lng})["natural"~"^(beach|bay|cape|cliff|coastline|fell|glacier|grassland|heath|hot_spring|mud|peak|reef|ridge|rock|sand|scree|scrub|shingle|sinkhole|spring|stone|tree_row|valley|water|wetland|wood)$"];
+  nwr(around:${radius},${lat},${lng})["leisure"="park"];
+  nwr(around:${radius},${lat},${lng})["historic"~"^(castle|monument|ruins|fort|memorial|archaeological_site)$"];
+);
+out center tags;
+      `.trim();
+
+      try {
+        const response = await fetch("https://overpass-api.de/api/interpreter", {
+          method: "POST",
+          headers: { "Content-Type": "text/plain" },
+          body: query
+        });
+
+        if (!response.ok) throw new Error(`Overpass failed: ${response.status}`);
+        const data = await response.json();
+        const elements = Array.isArray(data.elements) ? data.elements : [];
+        osmCache.set(key, elements);
+        return elements;
+      } catch (err) {
+        console.warn("OSM fetch failed:", err);
+        osmCache.set(key, []);
+        return [];
+      }
+    }
+
+    function uniqueBestScenic(items) {
+      const best = new Map();
+
+      for (const item of items) {
+        if (!item?.id) continue;
+        const existing = best.get(item.id);
+        if (!existing || (item.scenicWeight || 0) > (existing.scenicWeight || 0)) {
+          best.set(item.id, item);
+        }
+      }
+
+      return [...best.values()];
+    }
+
+    function getRouteBoundingBox(route) {
+      const points = routeToPoints(route);
+      let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+
+      for (const p of points) {
+        minLat = Math.min(minLat, p.lat);
+        maxLat = Math.max(maxLat, p.lat);
+        minLng = Math.min(minLng, p.lng);
+        maxLng = Math.max(maxLng, p.lng);
+      }
+
+      return { minLat, maxLat, minLng, maxLng };
+    }
+
+    function filterFailteByRouteBBox(route) {
+      const bbox = getRouteBoundingBox(route);
+      const pad = 0.25;
+
+      return failteAttractions.filter(a => {
+        if (a.lat == null || a.lng == null) return false;
+        return (
+          a.lat > bbox.minLat - pad &&
+          a.lat < bbox.maxLat + pad &&
+          a.lng > bbox.minLng - pad &&
+          a.lng < bbox.maxLng + pad
+        );
+      });
+    }
+
+    function scoreWaypointCandidate(attraction, routePoints) {
       const point = { lat: attraction.lat, lng: attraction.lng };
       let nearestDist = Infinity;
       let bestProgress = 0.5;
@@ -1045,24 +697,20 @@
       if (bestProgress < 0.18 || bestProgress > 0.82) return -Infinity;
       if (nearestDist > 12000) return -Infinity;
 
-      const middleBias = progressWeight(bestProgress);
-      const scenicBias = scenicNameScore(attraction.name);
-
       let proximityScore = 0;
       if (nearestDist < 2000) proximityScore = 25;
       else if (nearestDist < 5000) proximityScore = 16;
       else if (nearestDist < 8000) proximityScore = 8;
       else proximityScore = 2;
 
-      return scenicBias + proximityScore + middleBias * 10;
+      return scenicNameScore(attraction.name) + proximityScore + progressWeight(bestProgress) * 10;
     }
 
-    function chooseWaypointCandidates(baseRoutes) {
-      if (!failteAttractions.length || !baseRoutes.length) return [];
+    function chooseWaypointCandidates(baseRoute) {
+      const routePoints = routeToPoints(baseRoute);
+      const filtered = filterFailteByRouteBBox(baseRoute);
 
-      const routePoints = routeToPoints(baseRoutes[0].route);
-
-      const scored = failteAttractions
+      const scored = filtered
         .map(a => ({
           ...a,
           waypointCandidateScore: scoreWaypointCandidate(a, routePoints)
@@ -1070,20 +718,7 @@
         .filter(a => Number.isFinite(a.waypointCandidateScore))
         .sort((a, b) => b.waypointCandidateScore - a.waypointCandidateScore);
 
-      const chosen = [];
-      const minGapMeters = 20000;
-
-      for (const item of scored) {
-        const tooClose = chosen.some(c =>
-          haversineMeters({ lat: c.lat, lng: c.lng }, { lat: item.lat, lng: item.lng }) < minGapMeters
-        );
-        if (tooClose) continue;
-
-        chosen.push(item);
-        if (chosen.length >= MAX_WAYPOINT_CANDIDATES) break;
-      }
-
-      return chosen;
+      return scored.slice(0, MAX_WAYPOINT_CANDIDATES);
     }
 
     async function requestDirections(request) {
@@ -1131,14 +766,12 @@
       ]);
 
       for (const result of settled) {
-        if (result.status === "fulfilled") {
-          pushRoutes(result.value, "base");
-        }
+        if (result.status === "fulfilled") pushRoutes(result.value, "base");
       }
 
       if (!routeEntries.length) return [];
 
-      const waypointCandidates = chooseWaypointCandidates(routeEntries);
+      const waypointCandidates = chooseWaypointCandidates(routeEntries[0].route);
 
       for (const candidate of waypointCandidates) {
         try {
@@ -1163,11 +796,104 @@
       return routeEntries;
     }
 
-    async function scoreRoute({ route, placesService, onProgress, samplesOverride }) {
+    function isMotorwayText(text) {
+      if (!text) return false;
+      const t = text.toLowerCase();
+      return (
+        t.includes("motorway") ||
+        /\bm\d+\b/i.test(text) ||
+        t.includes("merge onto m") ||
+        t.includes("take the ramp") ||
+        t.includes("slip road")
+      );
+    }
+
+    function getStepText(step) {
+      return `${stripHtml(step?.instructions || "")} ${step?.maneuver || ""}`.trim();
+    }
+
+    function getRouteMotorwayStats(route) {
+      const leg = route?.legs?.[0];
+      const steps = leg?.steps || [];
+      let motorwayMeters = 0;
+      let totalMeters = 0;
+
+      for (const step of steps) {
+        const dist = step?.distance?.value ?? 0;
+        totalMeters += dist;
+        if (isMotorwayText(getStepText(step))) motorwayMeters += dist;
+      }
+
+      return {
+        motorwayMeters,
+        totalMeters,
+        motorwayRatio: totalMeters > 0 ? motorwayMeters / totalMeters : 0
+      };
+    }
+
+    function findNearestStep(sample, route) {
+      const steps = route?.legs?.[0]?.steps || [];
+      let best = null;
+      let bestDist = Infinity;
+
+      for (const step of steps) {
+        const stepPath = step?.path || [];
+        for (const p of stepPath) {
+          const point = {
+            lat: typeof p.lat === "function" ? p.lat() : p.lat,
+            lng: typeof p.lng === "function" ? p.lng() : p.lng
+          };
+          const d = haversineMeters(sample, point);
+          if (d < bestDist) {
+            bestDist = d;
+            best = step;
+          }
+        }
+      }
+
+      return { step: best, distance: bestDist };
+    }
+
+    function isSampleOnMotorway(sample, route) {
+      const nearest = findNearestStep(sample, route);
+      if (!nearest.step) return false;
+      return isMotorwayText(getStepText(nearest.step));
+    }
+
+    function scoreFailteProximity(route) {
+      const filtered = filterFailteByRouteBBox(route);
+      if (!filtered.length) return 0;
+
+      const path = routeToPoints(route);
+      let score = 0;
+
+      for (const attraction of filtered) {
+        if (attraction.lat == null || attraction.lng == null) continue;
+        const point = { lat: attraction.lat, lng: attraction.lng };
+
+        for (const routePoint of path) {
+          const d = haversineMeters(routePoint, point);
+
+          if (d < 800) {
+            score += 35;
+            break;
+          }
+
+          if (d < 2000) {
+            score += 15;
+            break;
+          }
+        }
+      }
+
+      return score;
+    }
+
+    async function scoreRoute({ route, radiusMeters, onProgress, samplesOverride }) {
       const path = routeToPoints(route);
       const samples = samplesOverride || sampleAlongPath(path, MAX_SAMPLES);
 
-      let places = [];
+      let scenicFeatures = [];
       let scenicSamplesUsed = 0;
       let motorwaySamplesSkipped = 0;
 
@@ -1183,52 +909,42 @@
 
         scenicSamplesUsed += 1;
 
-        const results = await scenicPlacesAtPoint({
-          placesService,
-          lat: point.lat,
-          lng: point.lng
-        });
+        const rawFeatures = await fetchOsmFeaturesNearPoint(point.lat, point.lng, radiusMeters);
+        const scored = rawFeatures
+          .map(scoreOsmFeature)
+          .filter(Boolean)
+          .map(feature => ({
+            ...feature,
+            scenicWeight: Math.round((feature.scenicWeight || 0) * progressWeight(point.routeProgress ?? 0.5))
+          }));
 
-        const weightedResults = results.map(place => ({
-          ...place,
-          scenicWeight: Math.round((place.scenicWeight || 0) * progressWeight(point.routeProgress ?? 0.5))
-        }));
-
-        places.push(...weightedResults);
+        scenicFeatures.push(...scored);
       }
 
-      const unique = uniqBestPlaces(places);
+      const unique = uniqueBestScenic(scenicFeatures);
 
       let weightedScenicScore = 0;
-      let ratingBonus = 0;
       let naturalCount = 0;
       let coastalCount = 0;
-      let failteMatchedPlaceCount = 0;
+      let failteMatchedFeatureCount = 0;
 
-      for (const p of unique) {
-        weightedScenicScore += p.scenicWeight || 0;
+      for (const f of unique) {
+        weightedScenicScore += f.scenicWeight || 0;
 
-        const r = typeof p.rating === "number" ? p.rating : 0;
-        const v = typeof p.user_ratings_total === "number" ? p.user_ratings_total : 0;
+        const n = (f.name || "").toLowerCase();
+        const t = (f.featureType || "").toLowerCase();
 
-        if (r >= 4.3) ratingBonus += 1;
-        if (v >= 200) ratingBonus += 1;
-        if (p.failteMatch) failteMatchedPlaceCount += 1;
-
-        const name = (p.name || "").toLowerCase();
-        const types = p.types || [];
-
-        if (
-          types.includes("natural_feature") ||
-          types.includes("park") ||
-          /\blake\b|\blough\b|\bforest\b|\bwoods\b|\bmountain\b|\bcliff\b|\bfalls\b|\bwaterfall\b|\bbeach\b|\bcoast\b|\briver\b/.test(name)
-        ) {
+        if (["beach", "bay", "cliff", "peak", "water", "wood", "waterfall", "wetland", "heath", "scrub"].includes(t) ||
+            /\blake\b|\blough\b|\bforest\b|\bwoods\b|\bmountain\b|\bcliff\b|\bfalls\b|\bwaterfall\b|\bbeach\b|\bcoast\b|\briver\b/.test(n)) {
           naturalCount += 1;
         }
 
-        if (/\bbeach\b|\bcoast\b|\bcliff\b|\bharbour\b|\bharbor\b|\bmarina\b|\bpier\b|\bbay\b|\blighthouse\b|\bcove\b|\bstrand\b/.test(name)) {
+        if (/\bbeach\b|\bcoast\b|\bcliff\b|\bharbour\b|\bharbor\b|\bbay\b|\bcove\b|\bstrand\b/.test(n) ||
+            ["beach", "bay", "coastline", "cliff"].includes(t)) {
           coastalCount += 1;
         }
+
+        if (f.failteMatch) failteMatchedFeatureCount += 1;
       }
 
       const leg = route.legs?.[0];
@@ -1243,17 +959,16 @@
         scenicCount: unique.length,
         naturalCount,
         coastalCount,
-        failteMatchedPlaceCount,
-        ratingBonus,
+        failteMatchedFeatureCount,
         weightedScenicScore,
-        rawScenic: weightedScenicScore + ratingBonus,
+        rawScenic: weightedScenicScore,
         failteRouteScore,
         distance,
         duration,
         samplesUsed: samples.length,
         scenicSamplesUsed,
         motorwaySamplesSkipped,
-        scenicPlaces: unique,
+        scenicFeatures: unique,
         motorwayMeters: motorwayStats.motorwayMeters,
         motorwayRatio: motorwayStats.motorwayRatio,
         motorwayPenalty
@@ -1266,9 +981,200 @@
       return detourDist * 4 + detourDur * 3;
     }
 
-    async function waitForGoogle() {
-      while (!(window.google && window.google.maps && window.google.maps.places)) {
-        await new Promise(r => setTimeout(r, 25));
+    function clearScenicMarkers() {
+      for (const marker of scenicMarkers) marker.setMap(null);
+      scenicMarkers = [];
+    }
+
+    function addScenicMarkers(features, waypointInfo) {
+      clearScenicMarkers();
+
+      const topFeatures = [...features]
+        .sort((a, b) => (b.scenicWeight || 0) - (a.scenicWeight || 0))
+        .slice(0, MAX_SCENIC_MARKERS);
+
+      for (const feature of topFeatures) {
+        const marker = new google.maps.Marker({
+          map,
+          position: { lat: feature.lat, lng: feature.lng },
+          title: feature.name,
+          label: "★"
+        });
+
+        marker.addListener("click", () => {
+          const failteLine = feature.failteMatch
+            ? `<br>Fáilte Ireland match: ${feature.failteMatch.matchedName}${feature.failteMatch.context ? ` — ${feature.failteMatch.context}` : ""}`
+            : "";
+
+          infoWindow.setContent(`
+            <div style="font-size:13px; max-width:240px;">
+              <strong>${feature.name || "Scenic feature"}</strong><br>
+              Scenic score: ${feature.scenicWeight ?? 0}<br>
+              Type: ${feature.featureType || "scenic"}${feature.context ? `<br>Context: ${feature.context}` : ""}
+              ${failteLine}
+            </div>
+          `);
+          infoWindow.open(map, marker);
+        });
+
+        scenicMarkers.push(marker);
+      }
+
+      if (waypointInfo?.lat != null && waypointInfo?.lng != null) {
+        const waypointMarker = new google.maps.Marker({
+          map,
+          position: { lat: waypointInfo.lat, lng: waypointInfo.lng },
+          title: waypointInfo.name,
+          label: "P"
+        });
+
+        waypointMarker.addListener("click", () => {
+          infoWindow.setContent(`
+            <div style="font-size:13px; max-width:240px;">
+              <strong>${waypointInfo.name}</strong><br>
+              Suggested scenic pit-stop${waypointInfo.context ? `<br>${waypointInfo.context}` : ""}
+            </div>
+          `);
+          infoWindow.open(map, waypointMarker);
+        });
+
+        scenicMarkers.push(waypointMarker);
+      }
+    }
+
+    function describeFeature(feature) {
+      const name = feature.name || "a scenic stop";
+      const lower = name.toLowerCase();
+
+      if (/\blake\b|\blough\b/.test(lower)) return `the lake ${name}`;
+      if (/\bforest\b|\bwoods\b/.test(lower)) return `the forest around ${name}`;
+      if (/\bbeach\b|\bstrand\b/.test(lower)) return `the coast near ${name}`;
+      if (/\bcliff\b|\bbay\b|\bcove\b/.test(lower)) return name;
+      if ((feature.featureType || "") === "viewpoint") return `the viewpoint ${name}`;
+      return name;
+    }
+
+    function findMotorwayExitMoment(route) {
+      const steps = route?.legs?.[0]?.steps || [];
+      let seenMotorway = false;
+
+      for (let i = 0; i < steps.length; i++) {
+        const currentIsMotorway = isMotorwayText(getStepText(steps[i]));
+
+        if (currentIsMotorway) {
+          seenMotorway = true;
+          continue;
+        }
+
+        if (seenMotorway && !currentIsMotorway) {
+          const text = stripHtml(steps[i].instructions || "");
+          return text || "leave the motorway for quieter roads";
+        }
+      }
+
+      return "";
+    }
+
+    function findLongestNonMotorwayStep(route) {
+      const steps = route?.legs?.[0]?.steps || [];
+      let bestStep = null;
+      let bestDistance = 0;
+
+      for (const step of steps) {
+        if (isMotorwayText(getStepText(step))) continue;
+        const dist = step?.distance?.value ?? 0;
+        if (dist > bestDistance) {
+          bestDistance = dist;
+          bestStep = step;
+        }
+      }
+
+      return bestStep;
+    }
+
+    function rankScenicFeatures(features) {
+      return [...features].sort((a, b) => (b.scenicWeight || 0) - (a.scenicWeight || 0));
+    }
+
+    function buildRouteExplanation(route, scenicFeatures, scoreData, destination, waypointInfo) {
+      const ranked = rankScenicFeatures(scenicFeatures).slice(0, 3);
+      const exitMoment = findMotorwayExitMoment(route);
+      const quietRoadStep = findLongestNonMotorwayStep(route);
+
+      let firstSentence = "";
+      if (waypointInfo?.name) {
+        const extras = ranked.slice(0, 3).map(f => f.name).filter(Boolean).join(", ");
+        firstSentence = `On your way to ${destination}, a pit-stop near ${waypointInfo.name}${waypointInfo.context ? ` in ${waypointInfo.context}` : ""} could also let you see ${extras || "some scenic highlights along the way"}.`;
+      } else if (ranked.length >= 2) {
+        firstSentence = `On your way to ${destination}, this route stays closer to real scenery, especially ${describeFeature(ranked[0])} and ${describeFeature(ranked[1])}.`;
+      } else if (ranked.length === 1) {
+        firstSentence = `On your way to ${destination}, this route stays close to ${describeFeature(ranked[0])}.`;
+      } else {
+        firstSentence = `On your way to ${destination}, this route avoids motorway-heavy stretches where possible and leans toward quieter roads.`;
+      }
+
+      let secondSentence = "";
+      if (exitMoment) {
+        secondSentence = `It leaves the motorway when the directions say “${exitMoment}”, so more of the drive happens on roads where the scenery is actually visible.`;
+      }
+
+      let thirdSentence = "";
+      if (quietRoadStep) {
+        const txt = stripHtml(quietRoadStep.instructions || "");
+        if (txt) thirdSentence = `A key scenic section is “${txt}”.`;
+      }
+
+      let fourthSentence = "";
+      if (typeof scoreData.motorwayRatio === "number") {
+        fourthSentence = `About ${Math.round(scoreData.motorwayRatio * 100)}% of the route is motorway, and motorway segments were penalised during scoring.`;
+      }
+
+      return [firstSentence, secondSentence, thirdSentence, fourthSentence].filter(Boolean).join(" ");
+    }
+
+    function buildExplanationFacts(route, scenicFeatures, scoreData, origin, destination, waypointInfo) {
+      const ranked = rankScenicFeatures(scenicFeatures).slice(0, 3);
+      const motorwayExitInstruction = findMotorwayExitMoment(route) || "";
+      const quietRoadStep = findLongestNonMotorwayStep(route);
+      const quietRoadInstruction = quietRoadStep ? stripHtml(quietRoadStep.instructions || "") : "";
+
+      return {
+        origin,
+        destination,
+        motorwaySharePercent: Math.round((scoreData.motorwayRatio || 0) * 100),
+        waypoint: waypointInfo
+          ? {
+              name: waypointInfo.name,
+              context: waypointInfo.context || ""
+            }
+          : null,
+        scenicHighlights: ranked.map(f => ({
+          name: f.name || "",
+          context: f.context || ""
+        })).filter(f => f.name),
+        motorwayExitInstruction,
+        quietRoadInstruction
+      };
+    }
+
+    async function getLlmRouteExplanation(facts) {
+      try {
+        const r = await fetch("/api/explain-route", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(facts)
+        });
+
+        const data = await r.json();
+        if (!r.ok) {
+          console.warn("LLM explanation failed:", data);
+          return null;
+        }
+
+        return data.explanation || null;
+      } catch (err) {
+        console.warn("LLM explanation error:", err);
+        return null;
       }
     }
 
@@ -1277,29 +1183,23 @@
     }
 
     function getTopWaypointPlaces(winner, maxWaypoints = 3) {
-      const rankedPlaces = rankScenicPlaces(winner?.scenicPlaces || [])
-        .filter(p => p && p.name)
+      const features = rankScenicFeatures(winner?.scenicFeatures || [])
+        .filter(f => f && f.name)
         .slice(0, maxWaypoints);
 
-      if (rankedPlaces.length) return rankedPlaces;
-
       if (winner?.waypointInfo?.name) {
-        return [{
-          name: winner.waypointInfo.name,
-          place_id: "",
-          scenicWeight: 999
-        }];
+        return [
+          { name: winner.waypointInfo.name, scenicWeight: 999 },
+          ...features
+        ].slice(0, maxWaypoints);
       }
 
-      return [];
+      return features;
     }
 
     function getWaypointParamValue(places) {
       return places
-        .map(place => {
-          if (place.place_id) return `place_id:${place.place_id}`;
-          return place.name || "";
-        })
+        .map(place => place.name || "")
         .filter(Boolean)
         .join("|");
     }
@@ -1316,7 +1216,6 @@
         `&travelmode=driving`;
 
       if (waypointValue) url += `&waypoints=${safeEncode(waypointValue)}`;
-
       return url;
     }
 
@@ -1372,6 +1271,12 @@
       return { origin, destination };
     }
 
+    async function waitForGoogle() {
+      while (!(window.google && window.google.maps)) {
+        await new Promise(r => setTimeout(r, 25));
+      }
+    }
+
     async function init() {
       await waitForGoogle();
       await loadFailteCsv();
@@ -1386,8 +1291,7 @@
         map,
         suppressMarkers: false
       });
-      placesService = new google.maps.places.PlacesService(map);
-      scenicInfoWindow = new google.maps.InfoWindow();
+      infoWindow = new google.maps.InfoWindow();
 
       document.getElementById("go").addEventListener("click", onGo);
       document.getElementById("shareRoute").addEventListener("click", copyShareLink);
@@ -1418,11 +1322,10 @@
 
       let routeEntries;
       try {
-        RADIUS_METERS = 700;
         routeEntries = await getDirectionsVariants(origin, destination);
-      } catch (e) {
+      } catch (err) {
         hideProgress();
-        meta.textContent = "Couldn’t get routes. Check your API key and that Maps JavaScript, Places, and Directions are enabled.";
+        meta.textContent = "Couldn’t get routes. Check your API key and that Directions is enabled.";
         return;
       }
 
@@ -1439,13 +1342,9 @@
         }))
         .reduce((a, b) => (b.duration < a.duration ? b : a));
 
-      const routeSamples = routeEntries.map(entry => {
-        const path = routeToPoints(entry.route);
-        return sampleAlongPath(path, MAX_SAMPLES);
-      });
+      const routeSamples = routeEntries.map(entry => sampleAlongPath(routeToPoints(entry.route), MAX_SAMPLES));
 
-      async function runScoring(currentRadius) {
-        RADIUS_METERS = currentRadius;
+      async function runScoring(radiusMeters) {
         const totalSteps = routeSamples.reduce((sum, samples) => sum + samples.length, 0) || 1;
         let completedSteps = 0;
         const scored = [];
@@ -1455,7 +1354,7 @@
 
           const result = await scoreRoute({
             route: entry.route,
-            placesService,
+            radiusMeters,
             samplesOverride: routeSamples[i],
             onProgress: (step, totalForRoute) => {
               updateProgress(
@@ -1480,7 +1379,7 @@
           }
 
           if (entry.waypointInfo) {
-            finalScore += 30;
+            finalScore += 35;
           }
 
           scored.push({
@@ -1495,12 +1394,11 @@
         return scored;
       }
 
-      let scored = await runScoring(700);
+      let scored = await runScoring(OSM_BASE_RADIUS_METERS);
       let winner = scored[0];
 
-      if (winner.weightedScenicScore < MIN_SCENIC_SCORE) {
-        console.log("Low scenic score — expanding scenic search radius");
-        scored = await runScoring(EXPANDED_RADIUS);
+      if ((winner.weightedScenicScore || 0) < MIN_SCENIC_SCORE) {
+        scored = await runScoring(OSM_EXPANDED_RADIUS_METERS);
         winner = scored[0];
       }
 
@@ -1511,34 +1409,42 @@
       directionsRenderer.setDirections(winner.directionsResult);
       directionsRenderer.setRouteIndex(winner.routeIndex);
 
-      addScenicMarkers(winner.scenicPlaces);
+      addScenicMarkers(winner.scenicFeatures, winner.waypointInfo);
       finishProgress();
 
-      const fallbackExplanation = buildRouteExplanation(winner.route, winner.scenicPlaces, winner);
+      const fallbackExplanation = buildRouteExplanation(
+        winner.route,
+        winner.scenicFeatures,
+        winner,
+        destination,
+        winner.waypointInfo
+      );
+
       const explanationFacts = buildExplanationFacts(
         winner.route,
-        winner.scenicPlaces,
+        winner.scenicFeatures,
         winner,
         origin,
-        destination
+        destination,
+        winner.waypointInfo
       );
+
       const llmExplanation = await getLlmRouteExplanation(explanationFacts);
       const explanation = llmExplanation || fallbackExplanation;
 
       const waypointLine = winner.waypointInfo
-        ? `<div>Waypoint pull: ${fmtPlaceLabel(winner.waypointInfo)}</div>`
+        ? `<div>Waypoint pit-stop: ${winner.waypointInfo.name}${winner.waypointInfo.context ? ` — ${winner.waypointInfo.context}` : ""}</div>`
         : "";
 
       meta.innerHTML = `
         <div><b>Chosen scenic route</b> (route #${winner.routeIndex + 1} of ${winner.directionsResult.routes.length})</div>
         <div>${fmtKm(winner.distance)} • ${fmtMin(winner.duration)}</div>
         <div class="muted">
-          Scenic places: ${winner.scenicCount}
+          Scenic features: ${winner.scenicCount}
           • Natural highlights: ${winner.naturalCount}
           • Coastal highlights: ${winner.coastalCount}
-          • Fáilte place matches: ${winner.failteMatchedPlaceCount}
+          • Fáilte feature matches: ${winner.failteMatchedFeatureCount}
           • Fáilte route pull: ${winner.failteRouteScore}
-          • Bonus: ${winner.ratingBonus}
           • Weighted scenic score: ${winner.weightedScenicScore}
           • Samples checked: ${winner.samplesUsed}
           • Scenic samples used: ${winner.scenicSamplesUsed}
