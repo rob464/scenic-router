@@ -1,439 +1,1469 @@
 <!doctype html>
 <html>
 <head>
-<meta charset="utf-8">
-<title>Find Yourself Along The Way</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="utf-8" />
+  <title>Find Yourself Along The Way</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&display=swap" rel="stylesheet">
 
-<style>
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: #fff;
+      color: #222;
+    }
 
-body{
-margin:0;
-font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
-background:#fff;
-color:#222;
-}
+    #siteHeader {
+      background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+      border-bottom: 1px solid #e5e7eb;
+      padding: 28px 16px 18px;
+    }
 
-#siteHeader{
-background:linear-gradient(180deg,#f8fafc 0%,#ffffff 100%);
-border-bottom:1px solid #e5e7eb;
-padding:28px 16px 18px;
-}
+    #siteHeaderInner {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
 
-#siteHeaderInner{
-max-width:1100px;
-margin:auto;
-}
+    #siteHeader h1 {
+      margin: 0 0 8px 0;
+      font-family: "Caveat", "Brush Script MT", cursive;
+      font-size: 56px;
+      line-height: 0.95;
+      font-weight: 700;
+      color: #111827;
+      letter-spacing: 0.01em;
+    }
 
-#siteHeader h1{
-margin:0 0 8px 0;
-font-family:"Caveat",cursive;
-font-size:56px;
-}
+    #siteSub {
+      margin: 0;
+      font-size: 20px;
+      line-height: 1.4;
+      color: #374151;
+      font-style: italic;
+    }
 
-#siteSub{
-font-style:italic;
-font-size:20px;
-color:#374151;
-}
+    #introText {
+      padding: 18px 16px 20px;
+      border-bottom: 1px solid #e5e7eb;
+      background: #ffffff;
+    }
 
-#introText{
-padding:18px 16px;
-border-bottom:1px solid #e5e7eb;
-}
+    #introTextInner {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
 
-#introTextInner{
-max-width:1100px;
-margin:auto;
-}
+    #introText p {
+      margin: 0 0 10px 0;
+      font-size: 15px;
+      line-height: 1.65;
+      color: #4b5563;
+      max-width: none;
+    }
 
-#top{
-padding:14px 16px;
-display:grid;
-grid-template-columns:1fr 1fr auto;
-gap:8px;
-border-bottom:1px solid #e5e7eb;
-}
+    #introText p:last-child {
+      margin-bottom: 0;
+    }
 
-input,button{
-padding:10px;
-border-radius:8px;
-border:1px solid #d1d5db;
-}
+    #top {
+      padding: 14px 16px;
+      display: grid;
+      grid-template-columns: 1fr 1fr auto auto auto;
+      gap: 8px;
+      align-items: center;
+      border-bottom: 1px solid #e5e7eb;
+      background: #ffffff;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
 
-button{
-background:#111827;
-color:white;
-cursor:pointer;
-border:none;
-}
+    input, button {
+      padding: 10px;
+      font-size: 14px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+    }
 
-#meta{
-padding:12px;
-font-size:13px;
-}
+    input {
+      background: #fff;
+    }
 
-#whyBox{
-margin-top:10px;
-padding:10px;
-background:#f9fafb;
-border:1px solid #e5e7eb;
-border-radius:8px;
-}
+    button {
+      cursor: pointer;
+      background: #111827;
+      color: white;
+      border: none;
+      white-space: nowrap;
+    }
 
-#map{
-height:calc(100vh - 420px);
-}
+    #meta {
+      padding: 12px;
+      color: #444;
+      font-size: 13px;
+      line-height: 1.45;
+    }
 
-</style>
+    .muted {
+      color: #666;
+    }
+
+    #whyBox {
+      margin-top: 10px;
+      padding: 10px 12px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      line-height: 1.55;
+    }
+
+    #progressWrap {
+      padding: 0 12px 12px;
+      display: none;
+    }
+
+    #progressLabel {
+      font-size: 13px;
+      margin-bottom: 6px;
+      color: #444;
+      display: block;
+    }
+
+    #progressOuter {
+      width: 100%;
+      height: 14px;
+      background: #e5e7eb;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    #progressBar {
+      width: 0%;
+      height: 100%;
+      background: #2563eb;
+      transition: width 0.2s ease;
+    }
+
+    #map {
+      height: calc(100vh - 430px);
+      min-height: 420px;
+    }
+
+    @media (max-width: 900px) {
+      #siteHeader {
+        padding: 24px 14px 14px;
+      }
+
+      #siteHeader h1 {
+        font-size: 44px;
+      }
+
+      #siteSub {
+        font-size: 17px;
+      }
+
+      #introText {
+        padding: 16px 14px 18px;
+      }
+
+      #top {
+        grid-template-columns: 1fr;
+      }
+
+      #map {
+        height: calc(100vh - 620px);
+      }
+    }
+  </style>
+
+  <script>
+    const MAPS_KEY = "AIzaSyCNGxoiKjhICp-Qt2FHpn4XuXd0Nngf34g";
+    const mapsScript = document.createElement("script");
+    mapsScript.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_KEY}&v=weekly`;
+    mapsScript.defer = true;
+    document.head.appendChild(mapsScript);
+  </script>
 </head>
-
 <body>
-
-<header id="siteHeader">
-<div id="siteHeaderInner">
-<h1>Find Yourself Along The Way</h1>
-<p id="siteSub">A Fáilte Ireland Scenic Route Generator.</p>
-</div>
-</header>
-
-<section id="introText">
-<div id="introTextInner">
-<p>Use this tool to easily find a scenic route to wherever you’re going.</p>
-<p>Featuring thousands of attractions listed with Fáilte Ireland, as well as countless natural wonders you might find along the way.</p>
-</div>
-</section>
-
-<div id="top">
-<input id="origin" placeholder="Start (e.g. Dublin)">
-<input id="destination" placeholder="End (e.g. Galway)">
-<button id="go">Find Scenic Route</button>
-</div>
-
-<div id="meta">Enter an origin and destination.</div>
-
-<div id="map"></div>
-
-<script>
-
-let map;
-let directionsService;
-let directionsRenderer;
-let placesService;
-
-let failteAttractions=[];
-
-let RADIUS_METERS=600;
-const EXPANDED_RADIUS=1600;
-const MIN_SCENIC_SCORE=70;
-
-function haversineMeters(a,b){
-
-const R=6371000;
-
-const dLat=(b.lat-a.lat)*Math.PI/180;
-const dLng=(b.lng-a.lng)*Math.PI/180;
-
-const lat1=a.lat*Math.PI/180;
-const lat2=b.lat*Math.PI/180;
-
-const x=
-Math.sin(dLat/2)**2+
-Math.cos(lat1)*Math.cos(lat2)*
-Math.sin(dLng/2)**2;
-
-return 2*R*Math.asin(Math.sqrt(x));
-
-}
-
-function routeToPoints(route){
-
-return route.overview_path.map(p=>({
-lat:p.lat(),
-lng:p.lng()
-}));
-
-}
-
-function driveByVisibilityScore(place){
-
-const name=(place.name||"").toLowerCase();
-
-let score=0;
-
-if(/\bcliff\b|\bbeach\b|\bcoast\b|\bbay\b|\bcove\b|\blough\b|\blake\b|\bmountain\b|\bwaterfall\b/.test(name))
-score+=12;
-
-if(/\bviewpoint\b|\blookout\b|\bscenic\b/.test(name))
-score+=10;
-
-if(/\bgarden\b|\bmuseum\b/.test(name))
-score-=5;
-
-return score;
-
-}
-
-function placeWeight(place){
-
-let score=driveByVisibilityScore(place);
-
-const name=(place.name||"").toLowerCase();
-
-if(matchFailte(place)){
-
-score+=45;
-
-if(/\bbeach\b|\bcoast\b|\blough\b|\blake\b|\bcliff\b/.test(name))
-score+=25;
-
-}
-
-return score;
-
-}
-
-function matchFailte(place){
-
-const name=(place.name||"").toLowerCase();
-
-for(const row of failteAttractions){
-
-const csv=(row.name||"").toLowerCase();
-
-if(name.includes(csv)||csv.includes(name))
-return true;
-
-}
-
-return false;
-
-}
-
-function scoreFailteProximity(route){
-
-const path=routeToPoints(route);
-
-let score=0;
-
-for(const attraction of failteAttractions){
-
-const lat=Number(attraction.latitude);
-const lng=Number(attraction.longitude);
-
-if(!lat||!lng)continue;
-
-const p={lat,lng};
-
-for(const rp of path){
-
-const d=haversineMeters(rp,p);
-
-if(d<800){
-score+=35;
-break;
-}
-
-if(d<2000){
-score+=15;
-break;
-}
-
-}
-
-}
-
-return score;
-
-}
-
-function detourPenalty(candidate,baseline){
-
-const dist=(candidate.distance-baseline.distance)/baseline.distance;
-const dur=(candidate.duration-baseline.duration)/baseline.duration;
-
-return dist*4+dur*3;
-
-}
-
-async function loadFailteCsv(){
-
-const r=await fetch("/attractions.csv");
-const text=await r.text();
-
-const rows=text.split("\n");
-
-const headers=rows[0].split(",");
-
-failteAttractions=rows.slice(1).map(line=>{
-
-const cols=line.split(",");
-
-let obj={};
-
-headers.forEach((h,i)=>obj[h.trim()]=cols[i]);
-
-return obj;
-
-});
-
-console.log("Loaded Failte attractions:",failteAttractions.length);
-
-}
-
-async function scenicPlaces(lat,lng){
-
-return new Promise(resolve=>{
-
-placesService.nearbySearch(
-{
-location:{lat,lng},
-radius:RADIUS_METERS,
-type:"tourist_attraction"
-},
-(results,status)=>{
-
-if(status==="OK")
-resolve(results);
-else
-resolve([]);
-
-});
-
-});
-
-}
-
-async function scoreRoute(route){
-
-const points=routeToPoints(route);
-
-let scenicScore=0;
-
-for(const p of points.slice(0,6)){
-
-const places=await scenicPlaces(p.lat,p.lng);
-
-for(const place of places){
-
-scenicScore+=placeWeight(place);
-
-}
-
-}
-
-const failteRouteScore=scoreFailteProximity(route);
-
-const leg=route.legs[0];
-
-return{
-rawScenic:scenicScore,
-failteRouteScore,
-distance:leg.distance.value,
-duration:leg.duration.value
-};
-
-}
-
-async function onGo(){
-
-const origin=document.getElementById("origin").value;
-const destination=document.getElementById("destination").value;
-
-directionsService.route({
-
-origin,
-destination,
-travelMode:"DRIVING",
-provideRouteAlternatives:true
-
-},async(res,status)=>{
-
-if(status!=="OK") return;
-
-const routes=res.routes;
-
-const baseline={
-distance:routes[0].legs[0].distance.value,
-duration:routes[0].legs[0].duration.value
-};
-
-let scored=[];
-
-for(let i=0;i<routes.length;i++){
-
-const r=routes[i];
-
-const result=await scoreRoute(r);
-
-const detour=detourPenalty(result,baseline);
-
-const finalScore=result.rawScenic+result.failteRouteScore-detour;
-
-scored.push({
-...result,
-routeIndex:i,
-directionsResult:res,
-finalScore
-});
-
-}
-
-scored.sort((a,b)=>b.finalScore-a.finalScore);
-
-let winner=scored[0];
-
-if(winner.rawScenic<MIN_SCENIC_SCORE){
-
-console.log("Expanding scenic search");
-
-RADIUS_METERS=EXPANDED_RADIUS;
-
-}
-
-directionsRenderer.setDirections(winner.directionsResult);
-directionsRenderer.setRouteIndex(winner.routeIndex);
-
-document.getElementById("meta").innerHTML=
-
-`Chosen scenic route<br>
-${(winner.distance/1000).toFixed(1)} km • ${Math.round(winner.duration/60)} min
-<div id="whyBox">
-Scenic score: ${winner.rawScenic}
-<br>
-Fáilte attraction influence: ${winner.failteRouteScore}
-</div>`;
-
-});
-
-}
-
-function initMap(){
-
-map=new google.maps.Map(
-document.getElementById("map"),
-{center:{lat:53.4,lng:-8.2},zoom:7}
+  <header id="siteHeader">
+    <div id="siteHeaderInner">
+      <h1>Find Yourself Along The Way</h1>
+      <p id="siteSub">A Fáilte Ireland Scenic Route Generator.</p>
+    </div>
+  </header>
+
+  <section id="introText">
+    <div id="introTextInner">
+      <p>Use this tool to easily find a scenic route to wherever you’re going to.</p>
+      <p>Featuring thousands of attractions as listed with Fáilte Ireland, as well as countless natural wonders you might find on the way.</p>
+    </div>
+  </section>
+
+  <div id="top">
+    <input id="origin" placeholder="Start (e.g. Dublin)" />
+    <input id="destination" placeholder="End (e.g. Galway)" />
+    <button id="go">Find Scenic Route</button>
+    <button id="shareRoute" type="button">Copy Share Link</button>
+    <button id="openMaps" type="button">Open in Google Maps</button>
+  </div>
+
+  <div id="meta" class="muted">Enter an origin and destination.</div>
+
+  <div id="progressWrap">
+    <span id="progressLabel">Scoring routes...</span>
+    <div id="progressOuter">
+      <div id="progressBar"></div>
+    </div>
+  </div>
+
+  <div id="map"></div>
+
+  <script>
+    let map, directionsService, directionsRenderer, infoWindow;
+    let scenicMarkers = [];
+    let failteAttractions = [];
+
+    let lastWinner = null;
+    let lastOrigin = "";
+    let lastDestination = "";
+
+    const MAX_SAMPLES = 3;
+    const MIN_SCENIC_SCORE = 80;
+    const OSM_BASE_RADIUS_METERS = 900;
+    const OSM_EXPANDED_RADIUS_METERS = 1800;
+    const MAX_WAYPOINT_CANDIDATES = 1;
+    const MAX_SCENIC_MARKERS = 8;
+
+    const osmCache = new Map();
+
+    function showProgress() {
+      document.getElementById("progressWrap").style.display = "block";
+    }
+
+    function hideProgress() {
+      document.getElementById("progressWrap").style.display = "none";
+    }
+
+    function resetProgressBar() {
+      const bar = document.getElementById("progressBar");
+      bar.style.width = "0%";
+      bar.style.background = "#2563eb";
+    }
+
+    function updateProgress(current, total, label) {
+      const pct = total > 0 ? Math.round((current / total) * 100) : 0;
+      document.getElementById("progressBar").style.width = `${pct}%`;
+      document.getElementById("progressLabel").textContent = label || `Scoring... ${pct}%`;
+    }
+
+    function finishProgress() {
+      const bar = document.getElementById("progressBar");
+      bar.style.width = "100%";
+      bar.style.background = "#16a34a";
+      document.getElementById("progressLabel").textContent = "Done";
+      setTimeout(hideProgress, 900);
+    }
+
+    function fmtKm(m) {
+      return `${(m / 1000).toFixed(1)} km`;
+    }
+
+    function fmtMin(s) {
+      return `${Math.round(s / 60)} min`;
+    }
+
+    function stripHtml(html) {
+      const div = document.createElement("div");
+      div.innerHTML = html || "";
+      return div.textContent || div.innerText || "";
+    }
+
+    function haversineMeters(a, b) {
+      const R = 6371000;
+      const toRad = d => d * Math.PI / 180;
+      const dLat = toRad(b.lat - a.lat);
+      const dLng = toRad(b.lng - a.lng);
+      const lat1 = toRad(a.lat);
+      const lat2 = toRad(b.lat);
+
+      const s =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+
+      return 2 * R * Math.asin(Math.min(1, Math.sqrt(s)));
+    }
+
+    function routeToPoints(route) {
+      if (route?.overview_path?.length) {
+        return route.overview_path.map(p => ({
+          lat: typeof p.lat === "function" ? p.lat() : p.lat,
+          lng: typeof p.lng === "function" ? p.lng() : p.lng
+        }));
+      }
+      return [];
+    }
+
+    function sampleAlongPath(points, maxSamples = MAX_SAMPLES) {
+      if (!points || points.length === 0) return [];
+      if (points.length <= 2) {
+        return points.map((p, i) => ({
+          ...p,
+          routeProgress: points.length === 1 ? 0.5 : i / Math.max(1, points.length - 1)
+        }));
+      }
+
+      const cumulative = [0];
+      let total = 0;
+
+      for (let i = 1; i < points.length; i++) {
+        total += haversineMeters(points[i - 1], points[i]);
+        cumulative.push(total);
+      }
+
+      if (total === 0) return [{ ...points[0], routeProgress: 0.5 }];
+
+      const startPct = 0.18;
+      const endPct = 0.82;
+      const samples = [];
+
+      for (let i = 0; i < maxSamples; i++) {
+        const t = startPct + ((endPct - startPct) * i) / Math.max(1, maxSamples - 1);
+        const targetDist = total * t;
+
+        let bestIdx = 0;
+        let bestDiff = Infinity;
+
+        for (let j = 0; j < cumulative.length; j++) {
+          const diff = Math.abs(cumulative[j] - targetDist);
+          if (diff < bestDiff) {
+            bestDiff = diff;
+            bestIdx = j;
+          }
+        }
+
+        samples.push({
+          ...points[bestIdx],
+          routeProgress: t
+        });
+      }
+
+      return samples;
+    }
+
+    function progressWeight(progress) {
+      const distanceFromMiddle = Math.abs(progress - 0.5);
+      if (distanceFromMiddle < 0.15) return 1.6;
+      if (distanceFromMiddle < 0.25) return 1.25;
+      if (distanceFromMiddle < 0.35) return 1.0;
+      return 0.6;
+    }
+
+    function normalizeName(s) {
+      return (s || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/&/g, " and ")
+        .replace(/[^a-z0-9 ]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function parseCsv(text) {
+      const rows = [];
+      let row = [];
+      let cell = "";
+      let inQuotes = false;
+
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        const next = text[i + 1];
+
+        if (ch === '"') {
+          if (inQuotes && next === '"') {
+            cell += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (ch === "," && !inQuotes) {
+          row.push(cell);
+          cell = "";
+        } else if ((ch === "\n" || ch === "\r") && !inQuotes) {
+          if (ch === "\r" && next === "\n") i++;
+          row.push(cell);
+          if (row.some(v => v.trim() !== "")) rows.push(row);
+          row = [];
+          cell = "";
+        } else {
+          cell += ch;
+        }
+      }
+
+      if (cell.length || row.length) {
+        row.push(cell);
+        if (row.some(v => v.trim() !== "")) rows.push(row);
+      }
+
+      if (!rows.length) return [];
+
+      const headers = rows[0].map(h => h.trim());
+      return rows.slice(1).map(cols => {
+        const obj = {};
+        headers.forEach((h, idx) => {
+          obj[h] = (cols[idx] || "").trim();
+        });
+        return obj;
+      });
+    }
+
+    async function loadFailteCsv() {
+      try {
+        const res = await fetch("/attractions.csv");
+        if (!res.ok) throw new Error(`CSV load failed: ${res.status}`);
+        const text = await res.text();
+        const parsed = parseCsv(text);
+
+        failteAttractions = parsed.map(row => {
+          const lat = Number(
+            row.latitude || row.Latitude || row.lat || row.Lat || row.geo_lat || ""
+          );
+          const lng = Number(
+            row.longitude || row.Longitude || row.lng || row.Lng || row.lon || row.Long || row.geo_long || ""
+          );
+
+          return {
+            name:
+              row.name ||
+              row.Name ||
+              row.title ||
+              row.Title ||
+              row.BusinessName ||
+              row.business_name ||
+              "",
+            lat: Number.isFinite(lat) ? lat : null,
+            lng: Number.isFinite(lng) ? lng : null,
+            context:
+              row.address ||
+              row.Address ||
+              row.locality ||
+              row.Locality ||
+              row.town ||
+              row.Town ||
+              row.county ||
+              row.County ||
+              "",
+            normalizedName: normalizeName(
+              row.name ||
+              row.Name ||
+              row.title ||
+              row.Title ||
+              row.BusinessName ||
+              row.business_name ||
+              ""
+            )
+          };
+        }).filter(r => r.name);
+
+        console.log("Loaded Fáilte attractions:", failteAttractions.length);
+      } catch (err) {
+        console.warn("Could not load attractions.csv", err);
+        failteAttractions = [];
+      }
+    }
+
+    function getFeatureName(feature) {
+      return feature.tags?.name || feature.name || "";
+    }
+
+    function getFeatureType(feature) {
+      if (feature.tags?.tourism === "viewpoint") return "viewpoint";
+      if (feature.tags?.waterway === "waterfall") return "waterfall";
+      if (feature.tags?.natural) return feature.tags.natural;
+      if (feature.tags?.leisure === "park") return "park";
+      if (feature.tags?.historic) return feature.tags.historic;
+      return "scenic";
+    }
+
+    function getFeaturePoint(feature) {
+      if (feature.center && Number.isFinite(feature.center.lat) && Number.isFinite(feature.center.lon)) {
+        return { lat: feature.center.lat, lng: feature.center.lon };
+      }
+      if (Number.isFinite(feature.lat) && Number.isFinite(feature.lon)) {
+        return { lat: feature.lat, lng: feature.lon };
+      }
+      return null;
+    }
+
+    function featureContext(feature) {
+      const tags = feature.tags || {};
+      if (tags.natural) return tags.natural.replace(/_/g, " ");
+      if (tags.tourism) return tags.tourism.replace(/_/g, " ");
+      if (tags.historic) return tags.historic.replace(/_/g, " ");
+      if (tags.leisure) return tags.leisure.replace(/_/g, " ");
+      return "";
+    }
+
+    function scenicNameScore(name) {
+      const n = (name || "").toLowerCase();
+      let score = 0;
+
+      if (/\bcliff\b|\bbeach\b|\bbay\b|\bcove\b|\bcoast\b|\blake\b|\blough\b|\bforest\b|\bwoods\b|\bmountain\b|\bwaterfall\b|\bfalls\b|\bview\b|\bviewpoint\b|\blookout\b|\bscenic\b|\bharbour\b|\bharbor\b|\bstrand\b/.test(n)) {
+        score += 30;
+      }
+
+      if (/\babbey\b|\bcastle\b|\bcathedral\b|\bfort\b|\bheritage\b|\bhistoric\b|\bmonument\b|\bruins\b/.test(n)) {
+        score += 10;
+      }
+
+      if (/\boffice\b|\bvisitor centre\b|\bvisitor center\b|\btour\b|\bagency\b/.test(n)) {
+        score -= 20;
+      }
+
+      return score;
+    }
+
+    function driveByVisibilityScore(name, type) {
+      const n = (name || "").toLowerCase();
+      let score = 0;
+
+      if (/\bcliff\b|\bbeach\b|\bcoast\b|\bbay\b|\bcove\b|\blake\b|\blough\b|\briver\b|\bmountain\b|\bwaterfall\b|\bfalls\b|\bharbour\b|\bharbor\b|\bstrand\b|\bviewpoint\b|\blookout\b/.test(n)) {
+        score += 12;
+      }
+
+      if (type === "viewpoint" || type === "cliff" || type === "beach" || type === "bay" || type === "peak" || type === "water" || type === "waterfall") {
+        score += 10;
+      }
+
+      if (type === "park") score += 3;
+
+      if (/\bmuseum\b|\bgallery\b|\bgarden\b/.test(n)) {
+        score -= 6;
+      }
+
+      return score;
+    }
+
+    function matchFailteByName(name) {
+      const normalized = normalizeName(name);
+      if (!normalized) return null;
+
+      for (const row of failteAttractions) {
+        if (!row.normalizedName) continue;
+        if (normalized === row.normalizedName || normalized.includes(row.normalizedName) || row.normalizedName.includes(normalized)) {
+          return row;
+        }
+      }
+
+      return null;
+    }
+
+    function scoreOsmFeature(feature) {
+      const name = getFeatureName(feature);
+      const type = getFeatureType(feature);
+      const point = getFeaturePoint(feature);
+      if (!point) return null;
+
+      let score = 0;
+      score += scenicNameScore(name);
+      score += driveByVisibilityScore(name, type);
+
+      if (type === "viewpoint") score += 18;
+      if (type === "waterfall") score += 16;
+      if (["cliff", "beach", "bay", "coastline", "peak", "wood", "water", "heath", "scrub", "wetland"].includes(type)) score += 12;
+      if (["castle", "ruins", "monument"].includes(type)) score += 8;
+
+      const failteMatch = matchFailteByName(name);
+      if (failteMatch) {
+        score += 45;
+        if (/\blake\b|\blough\b|\bforest\b|\bwoods\b|\bmountain\b|\bcliff\b|\bbeach\b|\bcoast\b|\bbay\b|\bcove\b|\blighthouse\b|\bstrand\b/.test((name || "").toLowerCase())) {
+          score += 25;
+        }
+      }
+
+      if (score <= 0) return null;
+
+      return {
+        id: `${feature.type || "x"}-${feature.id || name}-${point.lat.toFixed(5)}-${point.lng.toFixed(5)}`,
+        name: name || type,
+        context: failteMatch?.context || featureContext(feature),
+        lat: point.lat,
+        lng: point.lng,
+        scenicWeight: score,
+        featureType: type,
+        failteMatch: failteMatch ? { matchedName: failteMatch.name, context: failteMatch.context } : null
+      };
+    }
+
+    function osmCacheKey(lat, lng, radius) {
+      return `${lat.toFixed(3)},${lng.toFixed(3)},${radius}`;
+    }
+
+    async function fetchOsmFeaturesNearPoint(lat, lng, radius) {
+      const key = osmCacheKey(lat, lng, radius);
+      if (osmCache.has(key)) return osmCache.get(key);
+
+      const query = `
+[out:json][timeout:12];
+(
+  nwr(around:${radius},${lat},${lng})["tourism"="viewpoint"];
+  nwr(around:${radius},${lat},${lng})["waterway"="waterfall"];
+  nwr(around:${radius},${lat},${lng})["natural"~"^(beach|bay|cape|cliff|coastline|fell|glacier|grassland|heath|hot_spring|mud|peak|reef|ridge|rock|sand|scree|scrub|shingle|sinkhole|spring|stone|tree_row|valley|water|wetland|wood)$"];
+  nwr(around:${radius},${lat},${lng})["leisure"="park"];
+  nwr(around:${radius},${lat},${lng})["historic"~"^(castle|monument|ruins|fort|memorial|archaeological_site)$"];
 );
+out center tags;
+      `.trim();
 
-directionsService=new google.maps.DirectionsService();
-directionsRenderer=new google.maps.DirectionsRenderer({map});
-placesService=new google.maps.places.PlacesService(map);
+      try {
+        const response = await fetch("https://overpass-api.de/api/interpreter", {
+          method: "POST",
+          headers: { "Content-Type": "text/plain" },
+          body: query
+        });
 
-document.getElementById("go").onclick=onGo;
+        if (!response.ok) throw new Error(`Overpass failed: ${response.status}`);
+        const data = await response.json();
+        const elements = Array.isArray(data.elements) ? data.elements : [];
+        osmCache.set(key, elements);
+        return elements;
+      } catch (err) {
+        console.warn("OSM fetch failed:", err);
+        osmCache.set(key, []);
+        return [];
+      }
+    }
 
-loadFailteCsv();
+    function uniqueBestScenic(items) {
+      const best = new Map();
 
-}
+      for (const item of items) {
+        if (!item?.id) continue;
+        const existing = best.get(item.id);
+        if (!existing || (item.scenicWeight || 0) > (existing.scenicWeight || 0)) {
+          best.set(item.id, item);
+        }
+      }
 
-</script>
+      return [...best.values()];
+    }
 
-<script async defer
-src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCNGxoiKjhICp-Qt2FHpn4XuXd0Nngf34g&libraries=places&callback=initMap">
-</script>
+    function getRouteBoundingBox(route) {
+      const points = routeToPoints(route);
+      let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
 
+      for (const p of points) {
+        minLat = Math.min(minLat, p.lat);
+        maxLat = Math.max(maxLat, p.lat);
+        minLng = Math.min(minLng, p.lng);
+        maxLng = Math.max(maxLng, p.lng);
+      }
+
+      return { minLat, maxLat, minLng, maxLng };
+    }
+
+    function filterFailteByRouteBBox(route) {
+      const bbox = getRouteBoundingBox(route);
+      const pad = 0.25;
+
+      return failteAttractions.filter(a => {
+        if (a.lat == null || a.lng == null) return false;
+        return (
+          a.lat > bbox.minLat - pad &&
+          a.lat < bbox.maxLat + pad &&
+          a.lng > bbox.minLng - pad &&
+          a.lng < bbox.maxLng + pad
+        );
+      });
+    }
+
+    function scoreWaypointCandidate(attraction, routePoints) {
+      const point = { lat: attraction.lat, lng: attraction.lng };
+      let nearestDist = Infinity;
+      let bestProgress = 0.5;
+
+      for (let i = 0; i < routePoints.length; i++) {
+        const d = haversineMeters(routePoints[i], point);
+        if (d < nearestDist) {
+          nearestDist = d;
+          bestProgress = routePoints.length > 1 ? i / (routePoints.length - 1) : 0.5;
+        }
+      }
+
+      if (bestProgress < 0.18 || bestProgress > 0.82) return -Infinity;
+      if (nearestDist > 12000) return -Infinity;
+
+      let proximityScore = 0;
+      if (nearestDist < 2000) proximityScore = 25;
+      else if (nearestDist < 5000) proximityScore = 16;
+      else if (nearestDist < 8000) proximityScore = 8;
+      else proximityScore = 2;
+
+      return scenicNameScore(attraction.name) + proximityScore + progressWeight(bestProgress) * 10;
+    }
+
+    function chooseWaypointCandidates(baseRoute) {
+      const routePoints = routeToPoints(baseRoute);
+      const filtered = filterFailteByRouteBBox(baseRoute);
+
+      const scored = filtered
+        .map(a => ({
+          ...a,
+          waypointCandidateScore: scoreWaypointCandidate(a, routePoints)
+        }))
+        .filter(a => Number.isFinite(a.waypointCandidateScore))
+        .sort((a, b) => b.waypointCandidateScore - a.waypointCandidateScore);
+
+      return scored.slice(0, MAX_WAYPOINT_CANDIDATES);
+    }
+
+    async function requestDirections(request) {
+      return new Promise((resolve, reject) => {
+        directionsService.route(request, (res, status) => {
+          if (status === google.maps.DirectionsStatus.OK && res) resolve(res);
+          else reject(new Error(`Directions failed: ${status}`));
+        });
+      });
+    }
+
+    async function getDirectionsVariants(origin, destination) {
+      const baseRequest = {
+        origin,
+        destination,
+        travelMode: google.maps.TravelMode.DRIVING,
+        provideRouteAlternatives: true
+      };
+
+      const routeEntries = [];
+      const seen = new Set();
+
+      function pushRoutes(dirRes, sourceLabel, waypointInfo = null) {
+        const routes = dirRes.routes || [];
+        for (let i = 0; i < routes.length; i++) {
+          const route = routes[i];
+          const leg = route?.legs?.[0];
+          const key = `${leg?.distance?.value || 0}-${leg?.duration?.value || 0}-${route.summary || ""}-${waypointInfo?.name || ""}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+
+          routeEntries.push({
+            route,
+            directionsResult: dirRes,
+            routeIndex: i,
+            sourceLabel,
+            waypointInfo
+          });
+        }
+      }
+
+      const settled = await Promise.allSettled([
+        requestDirections(baseRequest),
+        requestDirections({ ...baseRequest, avoidHighways: true })
+      ]);
+
+      for (const result of settled) {
+        if (result.status === "fulfilled") pushRoutes(result.value, "base");
+      }
+
+      if (!routeEntries.length) return [];
+
+      const waypointCandidates = chooseWaypointCandidates(routeEntries[0].route);
+
+      for (const candidate of waypointCandidates) {
+        try {
+          const waypointResult = await requestDirections({
+            origin,
+            destination,
+            travelMode: google.maps.TravelMode.DRIVING,
+            waypoints: [
+              {
+                location: new google.maps.LatLng(candidate.lat, candidate.lng),
+                stopover: false
+              }
+            ]
+          });
+
+          pushRoutes(waypointResult, "waypoint", candidate);
+        } catch (err) {
+          console.warn("Waypoint route failed:", candidate.name, err);
+        }
+      }
+
+      return routeEntries;
+    }
+
+    function isMotorwayText(text) {
+      if (!text) return false;
+      const t = text.toLowerCase();
+      return (
+        t.includes("motorway") ||
+        /\bm\d+\b/i.test(text) ||
+        t.includes("merge onto m") ||
+        t.includes("take the ramp") ||
+        t.includes("slip road")
+      );
+    }
+
+    function getStepText(step) {
+      return `${stripHtml(step?.instructions || "")} ${step?.maneuver || ""}`.trim();
+    }
+
+    function getRouteMotorwayStats(route) {
+      const leg = route?.legs?.[0];
+      const steps = leg?.steps || [];
+      let motorwayMeters = 0;
+      let totalMeters = 0;
+
+      for (const step of steps) {
+        const dist = step?.distance?.value ?? 0;
+        totalMeters += dist;
+        if (isMotorwayText(getStepText(step))) motorwayMeters += dist;
+      }
+
+      return {
+        motorwayMeters,
+        totalMeters,
+        motorwayRatio: totalMeters > 0 ? motorwayMeters / totalMeters : 0
+      };
+    }
+
+    function findNearestStep(sample, route) {
+      const steps = route?.legs?.[0]?.steps || [];
+      let best = null;
+      let bestDist = Infinity;
+
+      for (const step of steps) {
+        const stepPath = step?.path || [];
+        for (const p of stepPath) {
+          const point = {
+            lat: typeof p.lat === "function" ? p.lat() : p.lat,
+            lng: typeof p.lng === "function" ? p.lng() : p.lng
+          };
+          const d = haversineMeters(sample, point);
+          if (d < bestDist) {
+            bestDist = d;
+            best = step;
+          }
+        }
+      }
+
+      return { step: best, distance: bestDist };
+    }
+
+    function isSampleOnMotorway(sample, route) {
+      const nearest = findNearestStep(sample, route);
+      if (!nearest.step) return false;
+      return isMotorwayText(getStepText(nearest.step));
+    }
+
+    function scoreFailteProximity(route) {
+      const filtered = filterFailteByRouteBBox(route);
+      if (!filtered.length) return 0;
+
+      const path = routeToPoints(route);
+      let score = 0;
+
+      for (const attraction of filtered) {
+        if (attraction.lat == null || attraction.lng == null) continue;
+        const point = { lat: attraction.lat, lng: attraction.lng };
+
+        for (const routePoint of path) {
+          const d = haversineMeters(routePoint, point);
+
+          if (d < 800) {
+            score += 35;
+            break;
+          }
+
+          if (d < 2000) {
+            score += 15;
+            break;
+          }
+        }
+      }
+
+      return score;
+    }
+
+    async function scoreRoute({ route, radiusMeters, onProgress, samplesOverride }) {
+      const path = routeToPoints(route);
+      const samples = samplesOverride || sampleAlongPath(path, MAX_SAMPLES);
+
+      let scenicFeatures = [];
+      let scenicSamplesUsed = 0;
+      let motorwaySamplesSkipped = 0;
+
+      for (let idx = 0; idx < samples.length; idx++) {
+        onProgress?.(idx + 1, samples.length);
+
+        const point = samples[idx];
+
+        if (isSampleOnMotorway(point, route)) {
+          motorwaySamplesSkipped += 1;
+          continue;
+        }
+
+        scenicSamplesUsed += 1;
+
+        const rawFeatures = await fetchOsmFeaturesNearPoint(point.lat, point.lng, radiusMeters);
+        const scored = rawFeatures
+          .map(scoreOsmFeature)
+          .filter(Boolean)
+          .map(feature => ({
+            ...feature,
+            scenicWeight: Math.round((feature.scenicWeight || 0) * progressWeight(point.routeProgress ?? 0.5))
+          }));
+
+        scenicFeatures.push(...scored);
+      }
+
+      const unique = uniqueBestScenic(scenicFeatures);
+
+      let weightedScenicScore = 0;
+      let naturalCount = 0;
+      let coastalCount = 0;
+      let failteMatchedFeatureCount = 0;
+
+      for (const f of unique) {
+        weightedScenicScore += f.scenicWeight || 0;
+
+        const n = (f.name || "").toLowerCase();
+        const t = (f.featureType || "").toLowerCase();
+
+        if (["beach", "bay", "cliff", "peak", "water", "wood", "waterfall", "wetland", "heath", "scrub"].includes(t) ||
+            /\blake\b|\blough\b|\bforest\b|\bwoods\b|\bmountain\b|\bcliff\b|\bfalls\b|\bwaterfall\b|\bbeach\b|\bcoast\b|\briver\b/.test(n)) {
+          naturalCount += 1;
+        }
+
+        if (/\bbeach\b|\bcoast\b|\bcliff\b|\bharbour\b|\bharbor\b|\bbay\b|\bcove\b|\bstrand\b/.test(n) ||
+            ["beach", "bay", "coastline", "cliff"].includes(t)) {
+          coastalCount += 1;
+        }
+
+        if (f.failteMatch) failteMatchedFeatureCount += 1;
+      }
+
+      const leg = route.legs?.[0];
+      const distance = leg?.distance?.value ?? 0;
+      const duration = leg?.duration?.value ?? 0;
+
+      const motorwayStats = getRouteMotorwayStats(route);
+      const motorwayPenalty = motorwayStats.motorwayRatio * 220;
+      const failteRouteScore = scoreFailteProximity(route);
+
+      return {
+        scenicCount: unique.length,
+        naturalCount,
+        coastalCount,
+        failteMatchedFeatureCount,
+        weightedScenicScore,
+        rawScenic: weightedScenicScore,
+        failteRouteScore,
+        distance,
+        duration,
+        samplesUsed: samples.length,
+        scenicSamplesUsed,
+        motorwaySamplesSkipped,
+        scenicFeatures: unique,
+        motorwayMeters: motorwayStats.motorwayMeters,
+        motorwayRatio: motorwayStats.motorwayRatio,
+        motorwayPenalty
+      };
+    }
+
+    function detourPenalty(candidate, baseline) {
+      const detourDist = (candidate.distance - baseline.distance) / Math.max(1, baseline.distance);
+      const detourDur = (candidate.duration - baseline.duration) / Math.max(1, baseline.duration);
+      return detourDist * 4 + detourDur * 3;
+    }
+
+    function clearScenicMarkers() {
+      for (const marker of scenicMarkers) marker.setMap(null);
+      scenicMarkers = [];
+    }
+
+    function addScenicMarkers(features, waypointInfo) {
+      clearScenicMarkers();
+
+      const topFeatures = [...features]
+        .sort((a, b) => (b.scenicWeight || 0) - (a.scenicWeight || 0))
+        .slice(0, MAX_SCENIC_MARKERS);
+
+      for (const feature of topFeatures) {
+        const marker = new google.maps.Marker({
+          map,
+          position: { lat: feature.lat, lng: feature.lng },
+          title: feature.name,
+          label: "★"
+        });
+
+        marker.addListener("click", () => {
+          const failteLine = feature.failteMatch
+            ? `<br>Fáilte Ireland match: ${feature.failteMatch.matchedName}${feature.failteMatch.context ? ` — ${feature.failteMatch.context}` : ""}`
+            : "";
+
+          infoWindow.setContent(`
+            <div style="font-size:13px; max-width:240px;">
+              <strong>${feature.name || "Scenic feature"}</strong><br>
+              Scenic score: ${feature.scenicWeight ?? 0}<br>
+              Type: ${feature.featureType || "scenic"}${feature.context ? `<br>Context: ${feature.context}` : ""}
+              ${failteLine}
+            </div>
+          `);
+          infoWindow.open(map, marker);
+        });
+
+        scenicMarkers.push(marker);
+      }
+
+      if (waypointInfo?.lat != null && waypointInfo?.lng != null) {
+        const waypointMarker = new google.maps.Marker({
+          map,
+          position: { lat: waypointInfo.lat, lng: waypointInfo.lng },
+          title: waypointInfo.name,
+          label: "P"
+        });
+
+        waypointMarker.addListener("click", () => {
+          infoWindow.setContent(`
+            <div style="font-size:13px; max-width:240px;">
+              <strong>${waypointInfo.name}</strong><br>
+              Suggested scenic pit-stop${waypointInfo.context ? `<br>${waypointInfo.context}` : ""}
+            </div>
+          `);
+          infoWindow.open(map, waypointMarker);
+        });
+
+        scenicMarkers.push(waypointMarker);
+      }
+    }
+
+    function describeFeature(feature) {
+      const name = feature.name || "a scenic stop";
+      const lower = name.toLowerCase();
+
+      if (/\blake\b|\blough\b/.test(lower)) return `the lake ${name}`;
+      if (/\bforest\b|\bwoods\b/.test(lower)) return `the forest around ${name}`;
+      if (/\bbeach\b|\bstrand\b/.test(lower)) return `the coast near ${name}`;
+      if (/\bcliff\b|\bbay\b|\bcove\b/.test(lower)) return name;
+      if ((feature.featureType || "") === "viewpoint") return `the viewpoint ${name}`;
+      return name;
+    }
+
+    function findMotorwayExitMoment(route) {
+      const steps = route?.legs?.[0]?.steps || [];
+      let seenMotorway = false;
+
+      for (let i = 0; i < steps.length; i++) {
+        const currentIsMotorway = isMotorwayText(getStepText(steps[i]));
+
+        if (currentIsMotorway) {
+          seenMotorway = true;
+          continue;
+        }
+
+        if (seenMotorway && !currentIsMotorway) {
+          const text = stripHtml(steps[i].instructions || "");
+          return text || "leave the motorway for quieter roads";
+        }
+      }
+
+      return "";
+    }
+
+    function findLongestNonMotorwayStep(route) {
+      const steps = route?.legs?.[0]?.steps || [];
+      let bestStep = null;
+      let bestDistance = 0;
+
+      for (const step of steps) {
+        if (isMotorwayText(getStepText(step))) continue;
+        const dist = step?.distance?.value ?? 0;
+        if (dist > bestDistance) {
+          bestDistance = dist;
+          bestStep = step;
+        }
+      }
+
+      return bestStep;
+    }
+
+    function rankScenicFeatures(features) {
+      return [...features].sort((a, b) => (b.scenicWeight || 0) - (a.scenicWeight || 0));
+    }
+
+    function buildRouteExplanation(route, scenicFeatures, scoreData, destination, waypointInfo) {
+      const ranked = rankScenicFeatures(scenicFeatures).slice(0, 3);
+      const exitMoment = findMotorwayExitMoment(route);
+      const quietRoadStep = findLongestNonMotorwayStep(route);
+
+      let firstSentence = "";
+      if (waypointInfo?.name) {
+        const extras = ranked.slice(0, 3).map(f => f.name).filter(Boolean).join(", ");
+        firstSentence = `On your way to ${destination}, a pit-stop near ${waypointInfo.name}${waypointInfo.context ? ` in ${waypointInfo.context}` : ""} could also let you see ${extras || "some scenic highlights along the way"}.`;
+      } else if (ranked.length >= 2) {
+        firstSentence = `On your way to ${destination}, this route stays closer to real scenery, especially ${describeFeature(ranked[0])} and ${describeFeature(ranked[1])}.`;
+      } else if (ranked.length === 1) {
+        firstSentence = `On your way to ${destination}, this route stays close to ${describeFeature(ranked[0])}.`;
+      } else {
+        firstSentence = `On your way to ${destination}, this route avoids motorway-heavy stretches where possible and leans toward quieter roads.`;
+      }
+
+      let secondSentence = "";
+      if (exitMoment) {
+        secondSentence = `It leaves the motorway when the directions say “${exitMoment}”, so more of the drive happens on roads where the scenery is actually visible.`;
+      }
+
+      let thirdSentence = "";
+      if (quietRoadStep) {
+        const txt = stripHtml(quietRoadStep.instructions || "");
+        if (txt) thirdSentence = `A key scenic section is “${txt}”.`;
+      }
+
+      let fourthSentence = "";
+      if (typeof scoreData.motorwayRatio === "number") {
+        fourthSentence = `About ${Math.round(scoreData.motorwayRatio * 100)}% of the route is motorway, and motorway segments were penalised during scoring.`;
+      }
+
+      return [firstSentence, secondSentence, thirdSentence, fourthSentence].filter(Boolean).join(" ");
+    }
+
+    function buildExplanationFacts(route, scenicFeatures, scoreData, origin, destination, waypointInfo) {
+      const ranked = rankScenicFeatures(scenicFeatures).slice(0, 3);
+      const motorwayExitInstruction = findMotorwayExitMoment(route) || "";
+      const quietRoadStep = findLongestNonMotorwayStep(route);
+      const quietRoadInstruction = quietRoadStep ? stripHtml(quietRoadStep.instructions || "") : "";
+
+      return {
+        origin,
+        destination,
+        motorwaySharePercent: Math.round((scoreData.motorwayRatio || 0) * 100),
+        waypoint: waypointInfo
+          ? {
+              name: waypointInfo.name,
+              context: waypointInfo.context || ""
+            }
+          : null,
+        scenicHighlights: ranked.map(f => ({
+          name: f.name || "",
+          context: f.context || ""
+        })).filter(f => f.name),
+        motorwayExitInstruction,
+        quietRoadInstruction
+      };
+    }
+
+    async function getLlmRouteExplanation(facts) {
+      try {
+        const r = await fetch("/api/explain-route", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(facts)
+        });
+
+        const data = await r.json();
+        if (!r.ok) {
+          console.warn("LLM explanation failed:", data);
+          return null;
+        }
+
+        return data.explanation || null;
+      } catch (err) {
+        console.warn("LLM explanation error:", err);
+        return null;
+      }
+    }
+
+    function safeEncode(value) {
+      return encodeURIComponent(value || "");
+    }
+
+    function getTopWaypointPlaces(winner, maxWaypoints = 3) {
+      const features = rankScenicFeatures(winner?.scenicFeatures || [])
+        .filter(f => f && f.name)
+        .slice(0, maxWaypoints);
+
+      if (winner?.waypointInfo?.name) {
+        return [
+          { name: winner.waypointInfo.name, scenicWeight: 999 },
+          ...features
+        ].slice(0, maxWaypoints);
+      }
+
+      return features;
+    }
+
+    function getWaypointParamValue(places) {
+      return places
+        .map(place => place.name || "")
+        .filter(Boolean)
+        .join("|");
+    }
+
+    function buildGoogleMapsUrl(origin, destination, winner) {
+      const base = "https://www.google.com/maps/dir/?api=1";
+      const waypoints = getTopWaypointPlaces(winner, 3);
+      const waypointValue = getWaypointParamValue(waypoints);
+
+      let url =
+        `${base}` +
+        `&origin=${safeEncode(origin)}` +
+        `&destination=${safeEncode(destination)}` +
+        `&travelmode=driving`;
+
+      if (waypointValue) url += `&waypoints=${safeEncode(waypointValue)}`;
+      return url;
+    }
+
+    function buildShareUrl(origin, destination, winner) {
+      const url = new URL(window.location.href);
+      url.searchParams.set("origin", origin);
+      url.searchParams.set("destination", destination);
+
+      const waypoints = getTopWaypointPlaces(winner, 3);
+      const waypointValue = getWaypointParamValue(waypoints);
+
+      if (waypointValue) url.searchParams.set("waypoints", waypointValue);
+      else url.searchParams.delete("waypoints");
+
+      return url.toString();
+    }
+
+    async function copyShareLink() {
+      if (!lastWinner || !lastOrigin || !lastDestination) {
+        alert("Find a scenic route first.");
+        return;
+      }
+
+      const shareUrl = buildShareUrl(lastOrigin, lastDestination, lastWinner);
+
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        alert("Share link copied.");
+      } catch (err) {
+        console.warn("Clipboard copy failed:", err);
+        prompt("Copy this link:", shareUrl);
+      }
+    }
+
+    function openInGoogleMaps() {
+      if (!lastWinner || !lastOrigin || !lastDestination) {
+        alert("Find a scenic route first.");
+        return;
+      }
+
+      const mapsUrl = buildGoogleMapsUrl(lastOrigin, lastDestination, lastWinner);
+      window.open(mapsUrl, "_blank");
+    }
+
+    function loadRouteFromUrl() {
+      const url = new URL(window.location.href);
+      const origin = url.searchParams.get("origin") || "";
+      const destination = url.searchParams.get("destination") || "";
+
+      if (origin) document.getElementById("origin").value = origin;
+      if (destination) document.getElementById("destination").value = destination;
+
+      return { origin, destination };
+    }
+
+    async function waitForGoogle() {
+      while (!(window.google && window.google.maps)) {
+        await new Promise(r => setTimeout(r, 25));
+      }
+    }
+
+    async function init() {
+      await waitForGoogle();
+      await loadFailteCsv();
+
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: { lat: 53.3498, lng: -6.2603 },
+        zoom: 7
+      });
+
+      directionsService = new google.maps.DirectionsService();
+      directionsRenderer = new google.maps.DirectionsRenderer({
+        map,
+        suppressMarkers: false
+      });
+      infoWindow = new google.maps.InfoWindow();
+
+      document.getElementById("go").addEventListener("click", onGo);
+      document.getElementById("shareRoute").addEventListener("click", copyShareLink);
+      document.getElementById("openMaps").addEventListener("click", openInGoogleMaps);
+
+      const initial = loadRouteFromUrl();
+      if (initial.origin && initial.destination) {
+        onGo();
+      }
+    }
+
+    async function onGo() {
+      const meta = document.getElementById("meta");
+      const origin = document.getElementById("origin").value.trim();
+      const destination = document.getElementById("destination").value.trim();
+
+      clearScenicMarkers();
+
+      if (!origin || !destination) {
+        meta.textContent = "Please enter both origin and destination.";
+        return;
+      }
+
+      resetProgressBar();
+      showProgress();
+      updateProgress(0, 1, "Getting route options...");
+      meta.textContent = "Getting routes…";
+
+      let routeEntries;
+      try {
+        routeEntries = await getDirectionsVariants(origin, destination);
+      } catch (err) {
+        hideProgress();
+        meta.textContent = "Couldn’t get routes. Check your API key and that Directions is enabled.";
+        return;
+      }
+
+      if (!routeEntries.length) {
+        hideProgress();
+        meta.textContent = "No routes found.";
+        return;
+      }
+
+      const baseline = routeEntries
+        .map(entry => ({
+          distance: entry.route?.legs?.[0]?.distance?.value ?? Infinity,
+          duration: entry.route?.legs?.[0]?.duration?.value ?? Infinity
+        }))
+        .reduce((a, b) => (b.duration < a.duration ? b : a));
+
+      const routeSamples = routeEntries.map(entry => sampleAlongPath(routeToPoints(entry.route), MAX_SAMPLES));
+
+      async function runScoring(radiusMeters) {
+        const totalSteps = routeSamples.reduce((sum, samples) => sum + samples.length, 0) || 1;
+        let completedSteps = 0;
+        const scored = [];
+
+        for (let i = 0; i < routeEntries.length; i++) {
+          const entry = routeEntries[i];
+
+          const result = await scoreRoute({
+            route: entry.route,
+            radiusMeters,
+            samplesOverride: routeSamples[i],
+            onProgress: (step, totalForRoute) => {
+              updateProgress(
+                completedSteps + step,
+                totalSteps,
+                `Scoring route ${i + 1} of ${routeEntries.length} — area ${step} of ${totalForRoute}`
+              );
+            }
+          });
+
+          completedSteps += routeSamples[i].length;
+
+          const detour = detourPenalty(result, baseline);
+          let finalScore =
+            result.rawScenic +
+            result.failteRouteScore -
+            detour -
+            result.motorwayPenalty;
+
+          if (result.motorwayRatio > 0.55 && routeEntries.length > 1) {
+            finalScore -= 80;
+          }
+
+          if (entry.waypointInfo) {
+            finalScore += 35;
+          }
+
+          scored.push({
+            ...entry,
+            ...result,
+            detourPenaltyValue: detour,
+            finalScore
+          });
+        }
+
+        scored.sort((a, b) => b.finalScore - a.finalScore);
+        return scored;
+      }
+
+      let scored = await runScoring(OSM_BASE_RADIUS_METERS);
+      let winner = scored[0];
+
+      if ((winner.weightedScenicScore || 0) < MIN_SCENIC_SCORE) {
+        scored = await runScoring(OSM_EXPANDED_RADIUS_METERS);
+        winner = scored[0];
+      }
+
+      lastWinner = winner;
+      lastOrigin = origin;
+      lastDestination = destination;
+
+      directionsRenderer.setDirections(winner.directionsResult);
+      directionsRenderer.setRouteIndex(winner.routeIndex);
+
+      addScenicMarkers(winner.scenicFeatures, winner.waypointInfo);
+      finishProgress();
+
+      const fallbackExplanation = buildRouteExplanation(
+        winner.route,
+        winner.scenicFeatures,
+        winner,
+        destination,
+        winner.waypointInfo
+      );
+
+      const explanationFacts = buildExplanationFacts(
+        winner.route,
+        winner.scenicFeatures,
+        winner,
+        origin,
+        destination,
+        winner.waypointInfo
+      );
+
+      const llmExplanation = await getLlmRouteExplanation(explanationFacts);
+      const explanation = llmExplanation || fallbackExplanation;
+
+      const waypointLine = winner.waypointInfo
+        ? `<div>Waypoint pit-stop: ${winner.waypointInfo.name}${winner.waypointInfo.context ? ` — ${winner.waypointInfo.context}` : ""}</div>`
+        : "";
+
+      meta.innerHTML = `
+        <div><b>Chosen scenic route</b> (route #${winner.routeIndex + 1} of ${winner.directionsResult.routes.length})</div>
+        <div>${fmtKm(winner.distance)} • ${fmtMin(winner.duration)}</div>
+        <div class="muted">
+          Scenic features: ${winner.scenicCount}
+          • Natural highlights: ${winner.naturalCount}
+          • Coastal highlights: ${winner.coastalCount}
+          • Fáilte feature matches: ${winner.failteMatchedFeatureCount}
+          • Fáilte route pull: ${winner.failteRouteScore}
+          • Weighted scenic score: ${winner.weightedScenicScore}
+          • Samples checked: ${winner.samplesUsed}
+          • Scenic samples used: ${winner.scenicSamplesUsed}
+          • Motorway samples skipped: ${winner.motorwaySamplesSkipped}
+          • Total route options considered: ${routeEntries.length}
+          • Motorway share: ${(winner.motorwayRatio * 100).toFixed(0)}%
+          • Motorway penalty: ${winner.motorwayPenalty.toFixed(1)}
+          • Detour penalty: ${winner.detourPenaltyValue.toFixed(2)}
+          • Final score: ${winner.finalScore.toFixed(2)}
+          ${waypointLine}
+        </div>
+        <div id="whyBox">
+          <b>Why this route?</b><br>
+          ${explanation}
+        </div>
+      `;
+    }
+
+    init();
+  </script>
 </body>
 </html>
