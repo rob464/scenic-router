@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Scenic Router</title>
+  <title>Scenic Route Finder</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <style>
@@ -13,13 +13,62 @@
       color: #222;
     }
 
+    #siteHeader {
+      background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+      border-bottom: 1px solid #e5e7eb;
+      padding: 36px 16px 28px;
+    }
+
+    #siteHeaderInner {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    #siteHeader h1 {
+      margin: 0 0 10px 0;
+      font-size: 34px;
+      line-height: 1.1;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #111827;
+    }
+
+    #siteSub {
+      margin: 0 0 18px 0;
+      font-size: 18px;
+      line-height: 1.4;
+      color: #374151;
+      font-weight: 500;
+    }
+
+    #siteBody {
+      max-width: 760px;
+    }
+
+    #siteBody p {
+      margin: 0 0 12px 0;
+      font-size: 15px;
+      line-height: 1.6;
+      color: #4b5563;
+    }
+
+    #siteQuote {
+      margin-top: 18px;
+      font-style: italic;
+      color: #1f2937;
+    }
+
     #top {
-      padding: 12px;
+      padding: 14px 16px;
       display: grid;
       grid-template-columns: 1fr 1fr auto auto auto;
       gap: 8px;
       align-items: center;
       border-bottom: 1px solid #e5e7eb;
+      background: #ffffff;
+      position: sticky;
+      top: 0;
+      z-index: 10;
     }
 
     input, button {
@@ -85,13 +134,29 @@
     }
 
     #map {
-      height: calc(100vh - 220px);
+      height: calc(100vh - 360px);
       min-height: 420px;
     }
 
     @media (max-width: 900px) {
+      #siteHeader {
+        padding: 28px 14px 22px;
+      }
+
+      #siteHeader h1 {
+        font-size: 28px;
+      }
+
+      #siteSub {
+        font-size: 16px;
+      }
+
       #top {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: 1fr;
+      }
+
+      #map {
+        height: calc(100vh - 480px);
       }
     }
   </style>
@@ -106,6 +171,18 @@
   </script>
 </head>
 <body>
+  <header id="siteHeader">
+    <div id="siteHeaderInner">
+      <h1>Scenic Route Finder</h1>
+      <p id="siteSub">Sometimes the best route from A to B isn’t the fastest one.</p>
+      <div id="siteBody">
+        <p>Use this tool to easily find a scenic route to wherever you’re going to.</p>
+        <p>Featuring hundreds of attractions as listed with Fáilte Ireland, as well as countless natural wonders across all of Ireland.</p>
+        <p id="siteQuote">The best way to find yourself… is to get a little lost, first.</p>
+      </div>
+    </div>
+  </header>
+
   <div id="top">
     <input id="origin" placeholder="Start (e.g. Dublin)" />
     <input id="destination" placeholder="End (e.g. Galway)" />
