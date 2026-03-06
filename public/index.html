@@ -193,12 +193,13 @@
   <header id="siteHeader">
     <div id="siteHeaderInner">
       <h1>Scenic Router</h1>
-      <p id="siteSub">Find yourself by getting a little lost.</p>
+      <p id="siteSub">The best way to find yourself… is to get a little lost, first.</p>
     </div>
   </header>
 
   <section id="introText">
     <div id="introTextInner">
+      <p>Sometimes the best route from A to B isn’t the fastest one.</p>
       <p>Use this tool to easily find a scenic route to wherever you’re going to.</p>
       <p>Featuring hundreds of attractions as listed with Fáilte Ireland, as well as countless natural wonders across all of Ireland.</p>
     </div>
@@ -671,6 +672,38 @@
       return score;
     }
 
+    function driveByVisibilityScore(place) {
+      const name = (place.name || "").toLowerCase();
+      const types = place.types || [];
+      let score = 0;
+
+      if (/\bcliff\b|\bbeach\b|\bcoast\b|\bbay\b|\bcove\b|\blake\b|\blough\b|\briver\b|\bmountain\b|\bwaterfall\b|\bfalls\b|\bharbour\b|\bharbor\b|\bstrand\b/.test(name)) {
+        score += 12;
+      }
+
+      if (/\bviewpoint\b|\blookout\b|\bscenic\b|\bpanorama\b/.test(name)) {
+        score += 10;
+      }
+
+      if (types.includes("natural_feature")) {
+        score += 8;
+      }
+
+      if (types.includes("park")) {
+        score += 3;
+      }
+
+      if (/\bmuseum\b|\bgallery\b|\bvisitor centre\b|\bvisitor center\b|\bheritage centre\b|\bmemorial garden\b|\bgarden\b/.test(name)) {
+        score -= 6;
+      }
+
+      if (/\babbey\b|\bcastle\b|\bcathedral\b|\bmonument\b/.test(name)) {
+        score -= 2;
+      }
+
+      return score;
+    }
+
     function placeWeight(place, queriedType = "") {
       if (isNonScenicCommercial(place)) return -10;
       if (isClosedPlace(place)) return -10;
@@ -688,6 +721,7 @@
       }
 
       score += coastalKeywordScore(place);
+      score += driveByVisibilityScore(place);
 
       if (/\babbey\b|\bcastle\b|\bmonument\b|\bcathedral\b|\bfort\b|\bheritage\b|\bhistoric\b/.test(name)) {
         score += 3;
