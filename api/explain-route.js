@@ -21,7 +21,7 @@ export default async function handler(req, res) {
     } = req.body || {};
 
     const payload = {
-      model: "gpt-5-mini",
+      model: "gpt-4.1-mini",
       input: [
         {
           role: "system",
@@ -29,10 +29,11 @@ export default async function handler(req, res) {
             {
               type: "input_text",
               text:
-                "You write short, warm, natural route explanations for a scenic driving app. " +
-                "Use only the facts provided. Do not invent landmarks, roads, exits, or scenery. " +
-                "Prefer natural scenery over commercial attractions. " +
-                "Keep the answer to 2-4 sentences, under 90 words."
+                 "You write short, natural, friendly route explanations for a scenic driving app. " +
+  "Use only the facts provided. Do not invent landmarks, roads, exits, or scenery. " +
+  "Prefer natural scenery over commercial attractions. " +
+  "Write in a warm human tone, like a helpful travel companion. " +
+  "Keep the answer to 2-4 sentences, under 110 words."
             }
           ]
         },
