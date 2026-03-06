@@ -1763,7 +1763,15 @@ textarea {
       );
       const llmExplanation = await getLlmRouteExplanation(explanationFacts);
       const explanation = llmExplanation || fallbackExplanation;
+      const extraMinutesVsFastest = Math.max(
+  0,
+  Math.round((winner.duration - baseline.duration) / 60)
+);
 
+const extraTimeFriendlyLine =
+  extraMinutesVsFastest <= 0
+    ? "That’s just as quick as the fastest route available."
+    : `That’s only ${extraMinutesVsFastest} minute${extraMinutesVsFastest === 1 ? "" : "s"} longer than you'd spend if you took the fastest way there.`;
       meta.innerHTML = `
         <div class="results-block">
           <div class="route-title">Your scenic route:</div>
@@ -1773,13 +1781,17 @@ textarea {
         <div class="results-block">
           <div class="nuts-title">The Nuts &amp; Bolts:</div>
           <div><b>Route #${winner.routeIndex + 1}</b> of ${winner.directionsResult.routes.length}</div>
-          <div>${fmtKm(winner.distance)} • ${fmtMin(winner.duration)}</div>
-          <div class="muted">
+        <div>${fmtKm(winner.distance)} • ${fmtMin(winner.duration)}</div>
+<div style="margin-top:6px; font-size:14px; color:#374151;">
+  ${extraTimeFriendlyLine}
+</div>
+<div class="muted" style="margin-top:8px;">
             Scenic places: ${winner.scenicCount}
             • Natural highlights: ${winner.naturalCount}
             • Coastal highlights: ${winner.coastalCount}
             • Bonus: ${winner.ratingBonus}
             • Weighted scenic score: ${winner.weightedScenicScore}
+            • Extra time vs fastest route: ${extraMinutesVsFastest} min
             • Search radius: ${winner.searchRadiusUsed}m
             • Samples checked: ${winner.samplesUsed}
             • Scenic samples used: ${winner.scenicSamplesUsed}
