@@ -29,7 +29,7 @@
 
     body {
       margin: 0;
-      font-family: "Chiron+Hei+HK", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: "Chiron Hei HK", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background:
         radial-gradient(circle at top left, rgba(37, 99, 235, 0.09), transparent 30%),
         linear-gradient(180deg, #f8fbff 0%, var(--bg) 100%);
@@ -134,7 +134,36 @@
       color: var(--text);
       box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
     }
+.route-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin-top: 24px;
+  margin-bottom: 8px;
+}
 
+#explanation {
+  background: #eef4ff;
+  border-left: 4px solid #2563eb;
+  padding: 16px 18px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.nuts-title {
+  font-size: 16px;
+  margin-top: 10px;
+  opacity: 0.75;
+}
+
+#meta {
+  margin-top: 8px;
+  padding: 14px;
+  background: #f8fafc;
+  border-radius: 10px;
+  font-size: 14px;
+}
     input::placeholder {
       color: #94a3b8;
     }
@@ -1552,7 +1581,12 @@
       const explanation = llmExplanation || fallbackExplanation;
 
       meta.innerHTML = `
-        <div><b>Chosen scenic route</b> (route #${winner.routeIndex + 1} of ${winner.directionsResult.routes.length})</div>
+               <div id="whyBox">
+          <b>Your Scenic Route:</b><br>
+          ${explanation}
+        </div>
+        
+        <div><b>The Nuts & Bolts</b> (route #${winner.routeIndex + 1} of ${winner.directionsResult.routes.length})</div>
         <div>${fmtKm(winner.distance)} • ${fmtMin(winner.duration)}</div>
         <div class="muted">
           Scenic places: ${winner.scenicCount}
@@ -1570,10 +1604,7 @@
           • Detour penalty: ${winner.detourPenaltyValue.toFixed(2)}
           • Final score: ${winner.finalScore.toFixed(2)}
         </div>
-        <div id="whyBox">
-          <b>Why this route?</b><br>
-          ${explanation}
-        </div>
+
       `;
     }
 
