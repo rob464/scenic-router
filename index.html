@@ -46,6 +46,15 @@
       color: #666;
     }
 
+    #whyBox {
+      margin-top: 10px;
+      padding: 10px 12px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      line-height: 1.45;
+    }
+
     #progressWrap {
       padding: 0 12px 12px;
       display: none;
@@ -74,7 +83,7 @@
     }
 
     #map {
-      height: calc(100vh - 150px);
+      height: calc(100vh - 190px);
       min-height: 420px;
     }
   </style>
@@ -112,7 +121,6 @@
     let scenicMarkers = [];
     let scenicInfoWindow;
 
-    // Stronger scenic bias
     const SCENIC_TYPES = ["tourist_attraction", "park"];
     const RADIUS_METERS = 600;
     const SAMPLE_EVERY_METERS = 6000;
@@ -303,7 +311,21 @@
     }
 
     function getStepText(step) {
-      return `${stripHtml(step?.instructions || "")} ${step?.maneuver || ""}`;
+      return `${stripHtml(step?.instructions || "")} ${step?.maneuver || ""}`.trim();
+    }
+
+    function getStepRoadName(step) {
+      const text = stripHtml(step?.instructions || "");
+      const mRoadMatch = text.match(/\bM\d+\b/i);
+      if (mRoadMatch) return mRoadMatch[0].toUpperCase();
+
+      const ontoMatch = text.match(/onto\s+([^,.;]+)/i);
+      if (ontoMatch) return ontoMatch[1].trim();
+
+      const towardMatch = text.match(/towards?\s+([^,.;]+)/i);
+      if (towardMatch) return towardMatch[1].trim();
+
+      return "";
     }
 
     function getRouteMotorwayStats(route) {
@@ -356,6 +378,102 @@
       const nearest = findNearestStep(sample, route);
       if (!nearest.step) return false;
       return isMotorwayText(getStepText(nearest.step));
+    }
+
+    function rankScenicPlaces(places) {
+      return [...places].sort((a, b) => {
+        const ar = (a.rating || 0) + Math.min(Math.log10((a.user_ratings_total || 0) + 1), 3);
+        const br = (b.rating || 0) + Math.min(Math.log10((b.user_ratings_total || 0) + 1), 3);
+        return br - ar;
+      });
+    }
+
+    function describePlace(place) {
+      const types = place.types || [];
+
+      if (types.includes("park")) return `the park ${place.name}`;
+      if (types.includes("tourist_attraction")) return place.name;
+      if (types.includes("museum")) return `the historic site ${place.name}`;
+      return place.name;
+    }
+
+    function findMotorwayExitMoment(route) {
+      const steps = route?.legs?.[0]?.steps || [];
+      let seenMotorway = false;
+
+      for (let i = 0; i < steps.length; i++) {
+        const currentIsMotorway = isMotorwayText(getStepText(steps[i]));
+
+        if (currentIsMotorway) {
+          seenMotorway = true;
+          continue;
+        }
+
+        if (seenMotorway && !currentIsMotorway) {
+          const text = stripHtml(steps[i].instructions || "");
+          return text || "leave the motorway for quieter roads";
+        }
+      }
+
+      return "";
+    }
+
+    function findLongestNonMotorwayStep(route) {
+      const steps = route?.legs?.[0]?.steps || [];
+      let bestStep = null;
+      let bestDistance = 0;
+
+      for (const step of steps) {
+        if (isMotorwayText(getStepText(step))) continue;
+
+        const dist = step?.distance?.value ?? 0;
+        if (dist > bestDistance) {
+          bestDistance = dist;
+          bestStep = step;
+        }
+      }
+
+      return bestStep;
+    }
+
+    function buildRouteExplanation(route, scenicPlaces, scoreData) {
+      const ranked = rankScenicPlaces(scenicPlaces).slice(0, 3);
+      const exitMoment = findMotorwayExitMoment(route);
+      const quietRoadStep = findLongestNonMotorwayStep(route);
+
+      const placeNames = ranked.map(describePlace);
+
+      let scenicSentence = "";
+      if (placeNames.length >= 2) {
+        scenicSentence = `This route was chosen because it passes close to ${placeNames[0]} and ${placeNames[1]}.`;
+      } else if (placeNames.length === 1) {
+        scenicSentence = `This route was chosen because it passes close to ${placeNames[0]}.`;
+      } else {
+        scenicSentence = `This route was chosen because it uses quieter roads and avoids long motorway stretches where possible.`;
+      }
+
+      let exitSentence = "";
+      if (exitMoment) {
+        exitSentence = `It leaves the motorway when the directions say “${exitMoment}”, which helps move the drive onto more scenic local roads.`;
+      }
+
+      let roadSentence = "";
+      if (quietRoadStep) {
+        const quietText = stripHtml(quietRoadStep.instructions || "");
+        if (quietText) {
+          roadSentence = `One of the longest scenic sections is: “${quietText}”.`;
+        }
+      }
+
+      let motorwaySentence = "";
+      if (typeof scoreData.motorwayRatio === "number") {
+        const motorwayPct = Math.round(scoreData.motorwayRatio * 100);
+        motorwaySentence = `About ${motorwayPct}% of this route is motorway, so the scorer preferred sections where you are more likely to actually experience the scenery.`;
+      }
+
+      return [scenicSentence, exitSentence, roadSentence, motorwaySentence]
+        .filter(Boolean)
+        .join(" ");
     }
 
     async function scenicPlacesAtPoint({ placesService, lat, lng }) {
@@ -427,8 +545,6 @@
       const duration = leg?.duration?.value ?? 0;
 
       const motorwayStats = getRouteMotorwayStats(route);
-
-      // Much stronger motorway penalty
       const motorwayPenalty = motorwayStats.motorwayRatio * 220;
 
       return {
@@ -450,9 +566,6 @@
     function detourPenalty(candidate, baseline) {
       const detourDist = (candidate.distance - baseline.distance) / Math.max(1, baseline.distance);
       const detourDur = (candidate.duration - baseline.duration) / Math.max(1, baseline.duration);
-
-      // Still penalize silly detours, but less aggressively than before
-      // so scenic routes actually get a chance.
       return detourDist * 8 + detourDur * 5;
     }
 
@@ -587,7 +700,6 @@
         const detour = detourPenalty(result, baseline);
         let finalScore = result.rawScenic - detour - result.motorwayPenalty;
 
-        // Hard downgrade for motorway-dominant routes when alternatives exist
         if (result.motorwayRatio > 0.55 && routeEntries.length > 1) {
           finalScore -= 80;
         }
@@ -609,6 +721,8 @@
       addScenicMarkers(winner.scenicPlaces);
       finishProgress();
 
+      const explanation = buildRouteExplanation(winner.route, winner.scenicPlaces, winner);
+
       meta.innerHTML = `
         <div><b>Chosen scenic route</b> (route #${winner.routeIndex + 1} of ${winner.directionsResult.routes.length})</div>
         <div>${fmtKm(winner.distance)} • ${fmtMin(winner.duration)}</div>
@@ -622,6 +736,10 @@
           • Motorway penalty: ${winner.motorwayPenalty.toFixed(1)}
           • Detour penalty: ${winner.detourPenaltyValue.toFixed(2)}
           • Final score: ${winner.finalScore.toFixed(2)}
+        </div>
+        <div id="whyBox">
+          <b>Why this route?</b><br>
+          ${explanation}
         </div>
       `;
     }
