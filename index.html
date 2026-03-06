@@ -109,8 +109,9 @@
 
   <script>
     let map, directionsService, directionsRenderer, placesService;
+    let scenicMarkers = [];
+    let scenicInfoWindow;
 
-    // Better balance: still reasonably fast, much more likely to find scenic results
     const SCENIC_TYPES = ["tourist_attraction", "park"];
     const RADIUS_METERS = 2500;
     const SAMPLE_EVERY_METERS = 8000;
@@ -154,38 +155,6 @@
       return `${Math.round(s / 60)} min`;
     }
 
-    function decodePolyline(encoded) {
-      let index = 0;
-      let lat = 0;
-      let lng = 0;
-      const coords = [];
-
-      while (index < encoded.length) {
-        let b, shift = 0, result = 0;
-        do {
-          b = encoded.charCodeAt(index++) - 63;
-          result |= (b & 0x1f) << shift;
-          shift += 5;
-        } while (b >= 0x20);
-        const dlat = (result & 1) ? ~(result >> 1) : (result >> 1);
-        lat += dlat;
-
-        shift = 0;
-        result = 0;
-        do {
-          b = encoded.charCodeAt(index++) - 63;
-          result |= (b & 0x1f) << shift;
-          shift += 5;
-        } while (b >= 0x20);
-        const dlng = (result & 1) ? ~(result >> 1) : (result >> 1);
-        lng += dlng;
-
-        coords.push({ lat: lat / 1e5, lng: lng / 1e5 });
-      }
-
-      return coords;
-    }
-
     function haversineMeters(a, b) {
       const R = 6371000;
       const toRad = d => d * Math.PI / 180;
@@ -201,8 +170,20 @@
       return 2 * R * Math.asin(Math.min(1, Math.sqrt(s)));
     }
 
+    function routeToPoints(route) {
+      if (route?.overview_path?.length) {
+        return route.overview_path.map(p => ({
+          lat: typeof p.lat === "function" ? p.lat() : p.lat,
+          lng: typeof p.lng === "function" ? p.lng() : p.lng
+        }));
+      }
+      return [];
+    }
+
     function sampleAlongPath(points, everyMeters = SAMPLE_EVERY_METERS, maxSamples = MAX_SAMPLES) {
       if (!points || points.length === 0) return [];
+
+      if (points.length === 1) return [points[0]];
 
       const samples = [points[0]];
       let acc = 0;
@@ -212,16 +193,14 @@
         if (acc >= everyMeters) {
           samples.push(points[i]);
           acc = 0;
-          if (samples.length >= maxSamples) break;
+          if (samples.length >= maxSamples - 1) break;
         }
       }
 
       const last = points[points.length - 1];
-      if (samples.length < maxSamples) {
-        const prev = samples[samples.length - 1];
-        if (!prev || haversineMeters(prev, last) > 50) {
-          samples.push(last);
-        }
+      const prev = samples[samples.length - 1];
+      if (!prev || haversineMeters(prev, last) > 50) {
+        samples.push(last);
       }
 
       return samples.slice(0, maxSamples);
@@ -268,6 +247,44 @@
       return [...out.values()];
     }
 
+    function clearScenicMarkers() {
+      for (const marker of scenicMarkers) {
+        marker.setMap(null);
+      }
+      scenicMarkers = [];
+    }
+
+    function addScenicMarkers(places) {
+      clearScenicMarkers();
+
+      const topPlaces = places.slice(0, 8);
+
+      for (const place of topPlaces) {
+        const loc = place.geometry?.location;
+        if (!loc) continue;
+
+        const marker = new google.maps.Marker({
+          map,
+          position: loc,
+          title: place.name,
+          label: "★"
+        });
+
+        marker.addListener("click", () => {
+          scenicInfoWindow.setContent(`
+            <div style="font-size:13px; max-width:220px;">
+              <strong>${place.name || "Scenic place"}</strong><br>
+              Rating: ${place.rating ?? "n/a"}<br>
+              Reviews: ${place.user_ratings_total ?? 0}
+            </div>
+          `);
+          scenicInfoWindow.open(map, marker);
+        });
+
+        scenicMarkers.push(marker);
+      }
+    }
+
     async function scenicPlacesAtPoint({ placesService, lat, lng }) {
       const all = [];
 
@@ -294,8 +311,7 @@
     }
 
     async function scoreRoute({ route, placesService, onProgress, samplesOverride }) {
-      const encoded = route.overview_polyline?.points || "";
-      const path = decodePolyline(encoded);
+      const path = routeToPoints(route);
       const samples = samplesOverride || sampleAlongPath(path, SAMPLE_EVERY_METERS, MAX_SAMPLES);
 
       let places = [];
@@ -333,7 +349,8 @@
         rawScenic: unique.length + ratingBonus,
         distance,
         duration,
-        samplesUsed: samples.length
+        samplesUsed: samples.length,
+        scenicPlaces: unique
       };
     }
 
@@ -358,8 +375,12 @@
       });
 
       directionsService = new google.maps.DirectionsService();
-      directionsRenderer = new google.maps.DirectionsRenderer({ map });
+      directionsRenderer = new google.maps.DirectionsRenderer({
+        map,
+        suppressMarkers: false
+      });
       placesService = new google.maps.places.PlacesService(map);
+      scenicInfoWindow = new google.maps.InfoWindow();
 
       document.getElementById("go").addEventListener("click", onGo);
     }
@@ -368,6 +389,8 @@
       const meta = document.getElementById("meta");
       const origin = document.getElementById("origin").value.trim();
       const destination = document.getElementById("destination").value.trim();
+
+      clearScenicMarkers();
 
       if (!origin || !destination) {
         meta.textContent = "Please enter both origin and destination.";
@@ -408,8 +431,7 @@
         .reduce((a, b) => (b.duration < a.duration ? b : a));
 
       const routeSamples = routes.map(route => {
-        const encoded = route.overview_polyline?.points || "";
-        const path = decodePolyline(encoded);
+        const path = routeToPoints(route);
         return sampleAlongPath(path, SAMPLE_EVERY_METERS, MAX_SAMPLES);
       });
 
@@ -439,7 +461,6 @@
 
         scored.push({
           i,
-          route: routes[i],
           ...result,
           penalty,
           finalScore
@@ -449,7 +470,10 @@
       scored.sort((a, b) => b.finalScore - a.finalScore);
       const winner = scored[0];
 
-      directionsRenderer.setDirections({ routes: [winner.route] });
+      directionsRenderer.setDirections(dirRes);
+      directionsRenderer.setRouteIndex(winner.i);
+
+      addScenicMarkers(winner.scenicPlaces);
       finishProgress();
 
       meta.innerHTML = `
