@@ -84,13 +84,12 @@
     }
 
     #map {
-      height: calc(100vh - 210px);
+      height: calc(100vh - 220px);
       min-height: 420px;
     }
   </style>
 
   <script>
-    // Paste your Google Maps browser key here
     const MAPS_KEY = "AIzaSyCNGxoiKjhICp-Qt2FHpn4XuXd0Nngf34g";
 
     const script = document.createElement("script");
@@ -121,8 +120,8 @@
     let map, directionsService, directionsRenderer, placesService;
     let scenicMarkers = [];
     let scenicInfoWindow;
+    let failteAttractions = [];
 
-    // Scenic tuning
     const SCENIC_TYPES = ["natural_feature", "park", "tourist_attraction"];
     const RADIUS_METERS = 600;
     const SAMPLE_EVERY_METERS = 6000;
@@ -322,6 +321,159 @@
       });
     }
 
+    async function loadFailteCsv() {
+      try {
+        const res = await fetch("./attractions.csv");
+        if (!res.ok) throw new Error(`CSV load failed: ${res.status}`);
+        const text = await res.text();
+        failteAttractions = parseCsv(text);
+        console.log("Loaded Fáilte attractions:", failteAttractions.length);
+      } catch (err) {
+        console.warn("Could not load attractions.csv", err);
+        failteAttractions = [];
+      }
+    }
+
+    function parseCsv(text) {
+      const rows = [];
+      let row = [];
+      let cell = "";
+      let inQuotes = false;
+
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        const next = text[i + 1];
+
+        if (ch === '"') {
+          if (inQuotes && next === '"') {
+            cell += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (ch === "," && !inQuotes) {
+          row.push(cell);
+          cell = "";
+        } else if ((ch === "\n" || ch === "\r") && !inQuotes) {
+          if (ch === "\r" && next === "\n") i++;
+          row.push(cell);
+          if (row.some(v => v.trim() !== "")) rows.push(row);
+          row = [];
+          cell = "";
+        } else {
+          cell += ch;
+        }
+      }
+
+      if (cell.length || row.length) {
+        row.push(cell);
+        if (row.some(v => v.trim() !== "")) rows.push(row);
+      }
+
+      if (!rows.length) return [];
+
+      const headers = rows[0].map(h => h.trim());
+      return rows.slice(1).map(cols => {
+        const obj = {};
+        headers.forEach((h, idx) => {
+          obj[h] = (cols[idx] || "").trim();
+        });
+        return obj;
+      });
+    }
+
+    function normalizeName(s) {
+      return (s || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/&/g, " and ")
+        .replace(/[^a-z0-9 ]/g, " ")
+        .replace(/\b(visitor centre|visitor center|office|official site)\b/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function getPlaceLatLng(place) {
+      const loc = place.geometry?.location;
+      if (!loc) return null;
+      return {
+        lat: typeof loc.lat === "function" ? loc.lat() : loc.lat,
+        lng: typeof loc.lng === "function" ? loc.lng() : loc.lng
+      };
+    }
+
+    function parseNumber(value) {
+      const n = Number(value);
+      return Number.isFinite(n) ? n : null;
+    }
+
+    function getCsvLatLng(row) {
+      const lat = parseNumber(
+        row.latitude || row.Latitude || row.lat || row.Lat || row["geo_lat"]
+      );
+      const lng = parseNumber(
+        row.longitude || row.Longitude || row.lng || row.Lng || row.lon || row.Long || row["geo_long"]
+      );
+
+      if (lat == null || lng == null) return null;
+      return { lat, lng };
+    }
+
+    function getCsvName(row) {
+      return (
+        row.name ||
+        row.Name ||
+        row.title ||
+        row.Title ||
+        row.BusinessName ||
+        row.business_name ||
+        ""
+      );
+    }
+
+    function matchFailteAttraction(place) {
+      if (!failteAttractions.length) return null;
+
+      const placeName = normalizeName(place.name || "");
+      const placePoint = getPlaceLatLng(place);
+      if (!placeName || !placePoint) return null;
+
+      let best = null;
+      let bestScore = -Infinity;
+
+      for (const row of failteAttractions) {
+        const csvNameRaw = getCsvName(row);
+        const csvName = normalizeName(csvNameRaw);
+        if (!csvName) continue;
+
+        const csvPoint = getCsvLatLng(row);
+        if (!csvPoint) continue;
+
+        const dist = haversineMeters(placePoint, csvPoint);
+
+        let nameScore = 0;
+        if (placeName === csvName) nameScore = 100;
+        else if (placeName.includes(csvName) || csvName.includes(placeName)) nameScore = 70;
+        else continue;
+
+        if (dist > 2000) continue;
+
+        const score = nameScore - dist / 50;
+
+        if (score > bestScore) {
+          bestScore = score;
+          best = {
+            row,
+            distanceMeters: dist,
+            matchedName: csvNameRaw
+          };
+        }
+      }
+
+      return best;
+    }
+
     function isNonScenicCommercial(place) {
       const types = place.types || [];
       const name = (place.name || "").toLowerCase();
@@ -373,6 +525,12 @@
         score += 3;
       }
 
+      const failteMatch = matchFailteAttraction(place);
+      if (failteMatch) {
+        score += 10;
+        place.failteMatch = failteMatch;
+      }
+
       return score;
     }
 
@@ -414,12 +572,17 @@
         });
 
         marker.addListener("click", () => {
+          const failteLine = place.failteMatch
+            ? `<br>Fáilte Ireland match: ${place.failteMatch.matchedName}`
+            : "";
+
           scenicInfoWindow.setContent(`
             <div style="font-size:13px; max-width:220px;">
               <strong>${place.name || "Scenic place"}</strong><br>
               Scenic score: ${place.scenicWeight ?? 0}<br>
               Rating: ${place.rating ?? "n/a"}<br>
               Reviews: ${place.user_ratings_total ?? 0}
+              ${failteLine}
             </div>
           `);
           scenicInfoWindow.open(map, marker);
@@ -518,6 +681,7 @@
 
     function buildRouteExplanation(route, scenicPlaces, scoreData) {
       const ranked = rankScenicPlaces(scenicPlaces).slice(0, 3);
+      const failteBoosted = scenicPlaces.filter(p => p.failteMatch).slice(0, 2);
       const exitMoment = findMotorwayExitMoment(route);
       const quietRoadStep = findLongestNonMotorwayStep(route);
 
@@ -528,6 +692,13 @@
         firstSentence = `This route was chosen because it stays close to ${describePlace(ranked[0])}, which scored highly as a natural or scenic stop.`;
       } else {
         firstSentence = `This route was chosen because it avoids motorway-heavy stretches where possible and leans toward quieter roads.`;
+      }
+
+      let failteSentence = "";
+      if (failteBoosted.length === 1) {
+        failteSentence = `${failteBoosted[0].name} is also listed in the Fáilte Ireland attractions data, which increased its score.`;
+      } else if (failteBoosted.length >= 2) {
+        failteSentence = `${failteBoosted[0].name} and ${failteBoosted[1].name} are also listed in the Fáilte Ireland attractions data, which increased this route’s score.`;
       }
 
       let secondSentence = "";
@@ -548,7 +719,7 @@
         fourthSentence = `About ${Math.round(scoreData.motorwayRatio * 100)}% of the route is motorway, and motorway segments were penalised during scoring.`;
       }
 
-      return [firstSentence, secondSentence, thirdSentence, fourthSentence]
+      return [firstSentence, failteSentence, secondSentence, thirdSentence, fourthSentence]
         .filter(Boolean)
         .join(" ");
     }
@@ -689,6 +860,7 @@
 
     async function init() {
       await waitForGoogle();
+      await loadFailteCsv();
 
       map = new google.maps.Map(document.getElementById("map"), {
         center: { lat: 53.3498, lng: -6.2603 },
