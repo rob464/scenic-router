@@ -16,7 +16,7 @@
     #top {
       padding: 12px;
       display: grid;
-      grid-template-columns: 1fr 1fr auto;
+      grid-template-columns: 1fr 1fr auto auto auto;
       gap: 8px;
       align-items: center;
       border-bottom: 1px solid #e5e7eb;
@@ -34,6 +34,7 @@
       background: #111827;
       color: white;
       border: none;
+      white-space: nowrap;
     }
 
     #meta {
@@ -87,6 +88,12 @@
       height: calc(100vh - 220px);
       min-height: 420px;
     }
+
+    @media (max-width: 900px) {
+      #top {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
   </style>
 
   <script>
@@ -103,6 +110,8 @@
     <input id="origin" placeholder="Start (e.g. Dublin)" />
     <input id="destination" placeholder="End (e.g. Galway)" />
     <button id="go">Find Scenic Route</button>
+    <button id="shareRoute" type="button">Copy Share Link</button>
+    <button id="openMaps" type="button">Open in Google Maps</button>
   </div>
 
   <div id="meta" class="muted">Enter an origin and destination.</div>
@@ -121,6 +130,10 @@
     let scenicMarkers = [];
     let scenicInfoWindow;
     let failteAttractions = [];
+
+    let lastWinner = null;
+    let lastOrigin = "";
+    let lastDestination = "";
 
     const SCENIC_TYPES = ["natural_feature", "park", "tourist_attraction"];
     const RADIUS_METERS = 600;
@@ -772,7 +785,8 @@
         scenicHighlights: ranked.map(p => p.name).filter(Boolean),
         failteHighlights: failteBoosted.map(p => p.name).filter(Boolean),
         quietRoadInstruction,
-        naturalHighlightsCount: scoreData.naturalCount || 0
+        naturalHighlightsCount: scoreData.naturalCount || 0,
+        coastalHighlightsCount: scoreData.coastalCount || 0
       };
     }
 
@@ -940,6 +954,99 @@
       return routeEntries;
     }
 
+    function safeEncode(value) {
+      return encodeURIComponent(value || "");
+    }
+
+    function getTopWaypointPlaces(winner, maxWaypoints = 3) {
+      return rankScenicPlaces(winner?.scenicPlaces || [])
+        .filter(p => p && p.name)
+        .slice(0, maxWaypoints);
+    }
+
+    function getWaypointParamValue(places) {
+      return places
+        .map(place => {
+          if (place.place_id) return `place_id:${place.place_id}`;
+          return place.name || "";
+        })
+        .filter(Boolean)
+        .join("|");
+    }
+
+    function buildGoogleMapsUrl(origin, destination, winner) {
+      const base = "https://www.google.com/maps/dir/?api=1";
+      const waypoints = getTopWaypointPlaces(winner, 3);
+      const waypointValue = getWaypointParamValue(waypoints);
+
+      let url =
+        `${base}` +
+        `&origin=${safeEncode(origin)}` +
+        `&destination=${safeEncode(destination)}` +
+        `&travelmode=driving`;
+
+      if (waypointValue) {
+        url += `&waypoints=${safeEncode(waypointValue)}`;
+      }
+
+      return url;
+    }
+
+    function buildShareUrl(origin, destination, winner) {
+      const url = new URL(window.location.href);
+      url.searchParams.set("origin", origin);
+      url.searchParams.set("destination", destination);
+
+      const waypoints = getTopWaypointPlaces(winner, 3);
+      const waypointValue = getWaypointParamValue(waypoints);
+
+      if (waypointValue) {
+        url.searchParams.set("waypoints", waypointValue);
+      } else {
+        url.searchParams.delete("waypoints");
+      }
+
+      return url.toString();
+    }
+
+    async function copyShareLink() {
+      if (!lastWinner || !lastOrigin || !lastDestination) {
+        alert("Find a scenic route first.");
+        return;
+      }
+
+      const shareUrl = buildShareUrl(lastOrigin, lastDestination, lastWinner);
+
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        alert("Share link copied.");
+      } catch (err) {
+        console.warn("Clipboard copy failed:", err);
+        prompt("Copy this link:", shareUrl);
+      }
+    }
+
+    function openInGoogleMaps() {
+      if (!lastWinner || !lastOrigin || !lastDestination) {
+        alert("Find a scenic route first.");
+        return;
+      }
+
+      const mapsUrl = buildGoogleMapsUrl(lastOrigin, lastDestination, lastWinner);
+      window.open(mapsUrl, "_blank");
+    }
+
+    function loadRouteFromUrl() {
+      const url = new URL(window.location.href);
+      const origin = url.searchParams.get("origin") || "";
+      const destination = url.searchParams.get("destination") || "";
+
+      if (origin) document.getElementById("origin").value = origin;
+      if (destination) document.getElementById("destination").value = destination;
+
+      return { origin, destination };
+    }
+
     async function init() {
       await waitForGoogle();
       await loadFailteCsv();
@@ -958,6 +1065,13 @@
       scenicInfoWindow = new google.maps.InfoWindow();
 
       document.getElementById("go").addEventListener("click", onGo);
+      document.getElementById("shareRoute").addEventListener("click", copyShareLink);
+      document.getElementById("openMaps").addEventListener("click", openInGoogleMaps);
+
+      const initial = loadRouteFromUrl();
+      if (initial.origin && initial.destination) {
+        onGo();
+      }
     }
 
     async function onGo() {
@@ -1044,6 +1158,10 @@
 
       scored.sort((a, b) => b.finalScore - a.finalScore);
       const winner = scored[0];
+
+      lastWinner = winner;
+      lastOrigin = origin;
+      lastDestination = destination;
 
       directionsRenderer.setDirections(winner.directionsResult);
       directionsRenderer.setRouteIndex(winner.routeIndex);
