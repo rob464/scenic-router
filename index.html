@@ -80,6 +80,7 @@
   </style>
 
   <script>
+    // PASTE YOUR GOOGLE MAPS API KEY HERE
     const MAPS_KEY = "AIzaSyCNGxoiKjhICp-Qt2FHpn4XuXd0Nngf34g";
 
     const script = document.createElement("script");
@@ -111,11 +112,11 @@
     let scenicMarkers = [];
     let scenicInfoWindow;
 
-    // Tuned to avoid “motorway near lots of attractions = scenic”
+    // Stronger scenic bias
     const SCENIC_TYPES = ["tourist_attraction", "park"];
-    const RADIUS_METERS = 700;
-    const SAMPLE_EVERY_METERS = 7000;
-    const MAX_SAMPLES = 6;
+    const RADIUS_METERS = 600;
+    const SAMPLE_EVERY_METERS = 6000;
+    const MAX_SAMPLES = 7;
 
     const placeCache = new Map();
 
@@ -282,6 +283,12 @@
       }
     }
 
+    function stripHtml(html) {
+      const div = document.createElement("div");
+      div.innerHTML = html || "";
+      return div.textContent || div.innerText || "";
+    }
+
     function isMotorwayText(text) {
       if (!text) return false;
       const t = text.toLowerCase();
@@ -295,6 +302,10 @@
       );
     }
 
+    function getStepText(step) {
+      return `${stripHtml(step?.instructions || "")} ${step?.maneuver || ""}`;
+    }
+
     function getRouteMotorwayStats(route) {
       const leg = route?.legs?.[0];
       const steps = leg?.steps || [];
@@ -306,25 +317,20 @@
         const dist = step?.distance?.value ?? 0;
         totalMeters += dist;
 
-        const instruction = step?.instructions || "";
-        const roadText = step?.maneuver || "";
-        const combined = `${instruction} ${roadText}`;
-
-        if (isMotorwayText(combined)) {
+        if (isMotorwayText(getStepText(step))) {
           motorwayMeters += dist;
         }
       }
 
-      const motorwayRatio = totalMeters > 0 ? motorwayMeters / totalMeters : 0;
-
       return {
         motorwayMeters,
         totalMeters,
-        motorwayRatio
+        motorwayRatio: totalMeters > 0 ? motorwayMeters / totalMeters : 0
       };
     }
 
-    function findNearestStep(sample, steps) {
+    function findNearestStep(sample, route) {
+      const steps = route?.legs?.[0]?.steps || [];
       let best = null;
       let bestDist = Infinity;
 
@@ -347,14 +353,9 @@
     }
 
     function isSampleOnMotorway(sample, route) {
-      const steps = route?.legs?.[0]?.steps || [];
-      if (!steps.length) return false;
-
-      const nearest = findNearestStep(sample, steps);
+      const nearest = findNearestStep(sample, route);
       if (!nearest.step) return false;
-
-      const text = `${nearest.step.instructions || ""} ${nearest.step.maneuver || ""}`;
-      return isMotorwayText(text);
+      return isMotorwayText(getStepText(nearest.step));
     }
 
     async function scenicPlacesAtPoint({ placesService, lat, lng }) {
@@ -426,7 +427,9 @@
       const duration = leg?.duration?.value ?? 0;
 
       const motorwayStats = getRouteMotorwayStats(route);
-      const motorwayPenalty = motorwayStats.motorwayRatio * 120;
+
+      // Much stronger motorway penalty
+      const motorwayPenalty = motorwayStats.motorwayRatio * 220;
 
       return {
         scenicCount: unique.length,
@@ -447,13 +450,52 @@
     function detourPenalty(candidate, baseline) {
       const detourDist = (candidate.distance - baseline.distance) / Math.max(1, baseline.distance);
       const detourDur = (candidate.duration - baseline.duration) / Math.max(1, baseline.duration);
-      return detourDist * 12 + detourDur * 8;
+
+      // Still penalize silly detours, but less aggressively than before
+      // so scenic routes actually get a chance.
+      return detourDist * 8 + detourDur * 5;
     }
 
     async function waitForGoogle() {
       while (!(window.google && window.google.maps && window.google.maps.places)) {
         await new Promise(r => setTimeout(r, 25));
       }
+    }
+
+    async function getDirectionsVariants(origin, destination) {
+      const baseRequest = {
+        origin,
+        destination,
+        travelMode: google.maps.TravelMode.DRIVING,
+        provideRouteAlternatives: true
+      };
+
+      const normalPromise = directionsService.route(baseRequest);
+      const scenicPromise = directionsService.route({
+        ...baseRequest,
+        avoidHighways: true
+      });
+
+      const results = await Promise.allSettled([normalPromise, scenicPromise]);
+
+      const routeEntries = [];
+
+      for (const result of results) {
+        if (result.status !== "fulfilled") continue;
+
+        const dirRes = result.value;
+        const routes = dirRes.routes || [];
+
+        for (let i = 0; i < routes.length; i++) {
+          routeEntries.push({
+            route: routes[i],
+            directionsResult: dirRes,
+            routeIndex: i
+          });
+        }
+      }
+
+      return routeEntries;
     }
 
     async function init() {
@@ -492,36 +534,30 @@
       updateProgress(0, 1, "Getting route options...");
       meta.textContent = "Getting routes…";
 
-      let dirRes;
+      let routeEntries;
       try {
-        dirRes = await directionsService.route({
-          origin,
-          destination,
-          travelMode: google.maps.TravelMode.DRIVING,
-          provideRouteAlternatives: true
-        });
+        routeEntries = await getDirectionsVariants(origin, destination);
       } catch (e) {
         hideProgress();
         meta.textContent = "Couldn’t get routes. Check your API key and that Maps JavaScript, Places, and Directions are enabled.";
         return;
       }
 
-      const routes = dirRes.routes || [];
-      if (!routes.length) {
+      if (!routeEntries.length) {
         hideProgress();
         meta.textContent = "No routes found.";
         return;
       }
 
-      const baseline = routes
-        .map(r => ({
-          distance: r.legs?.[0]?.distance?.value ?? Infinity,
-          duration: r.legs?.[0]?.duration?.value ?? Infinity
+      const baseline = routeEntries
+        .map(entry => ({
+          distance: entry.route?.legs?.[0]?.distance?.value ?? Infinity,
+          duration: entry.route?.legs?.[0]?.duration?.value ?? Infinity
         }))
         .reduce((a, b) => (b.duration < a.duration ? b : a));
 
-      const routeSamples = routes.map(route => {
-        const path = routeToPoints(route);
+      const routeSamples = routeEntries.map(entry => {
+        const path = routeToPoints(entry.route);
         return sampleAlongPath(path, SAMPLE_EVERY_METERS, MAX_SAMPLES);
       });
 
@@ -530,29 +566,36 @@
 
       const scored = [];
 
-      for (let i = 0; i < routes.length; i++) {
+      for (let i = 0; i < routeEntries.length; i++) {
+        const entry = routeEntries[i];
+
         const result = await scoreRoute({
-          route: routes[i],
+          route: entry.route,
           placesService,
           samplesOverride: routeSamples[i],
           onProgress: (step, totalForRoute) => {
             updateProgress(
               completedSteps + step,
               totalSteps,
-              `Scoring route ${i + 1} of ${routes.length} — area ${step} of ${totalForRoute}`
+              `Scoring route ${i + 1} of ${routeEntries.length} — area ${step} of ${totalForRoute}`
             );
           }
         });
 
         completedSteps += routeSamples[i].length;
 
-        const penalty = detourPenalty(result, baseline);
-        const finalScore = result.rawScenic - penalty - result.motorwayPenalty;
+        const detour = detourPenalty(result, baseline);
+        let finalScore = result.rawScenic - detour - result.motorwayPenalty;
+
+        // Hard downgrade for motorway-dominant routes when alternatives exist
+        if (result.motorwayRatio > 0.55 && routeEntries.length > 1) {
+          finalScore -= 80;
+        }
 
         scored.push({
-          i,
+          ...entry,
           ...result,
-          penalty,
+          detourPenaltyValue: detour,
           finalScore
         });
       }
@@ -560,23 +603,24 @@
       scored.sort((a, b) => b.finalScore - a.finalScore);
       const winner = scored[0];
 
-      directionsRenderer.setDirections(dirRes);
-      directionsRenderer.setRouteIndex(winner.i);
+      directionsRenderer.setDirections(winner.directionsResult);
+      directionsRenderer.setRouteIndex(winner.routeIndex);
 
       addScenicMarkers(winner.scenicPlaces);
       finishProgress();
 
       meta.innerHTML = `
-        <div><b>Chosen scenic route</b> (route #${winner.i + 1} of ${routes.length})</div>
+        <div><b>Chosen scenic route</b> (route #${winner.routeIndex + 1} of ${winner.directionsResult.routes.length})</div>
         <div>${fmtKm(winner.distance)} • ${fmtMin(winner.duration)}</div>
         <div class="muted">
           Scenic places: ${winner.scenicCount} • Bonus: ${winner.ratingBonus}
           • Samples checked: ${winner.samplesUsed}
           • Scenic samples used: ${winner.scenicSamplesUsed}
           • Motorway samples skipped: ${winner.motorwaySamplesSkipped}
+          • Total route options considered: ${routeEntries.length}
           • Motorway share: ${(winner.motorwayRatio * 100).toFixed(0)}%
           • Motorway penalty: ${winner.motorwayPenalty.toFixed(1)}
-          • Detour penalty: ${winner.penalty.toFixed(2)}
+          • Detour penalty: ${winner.detourPenaltyValue.toFixed(2)}
           • Final score: ${winner.finalScore.toFixed(2)}
         </div>
       `;
