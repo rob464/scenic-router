@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html>
 <head>
@@ -7,62 +8,93 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <style>
+    :root {
+      --bg: #f3f6fb;
+      --surface: rgba(255, 255, 255, 0.92);
+      --surface-strong: #ffffff;
+      --border: rgba(148, 163, 184, 0.22);
+      --text: #0f172a;
+      --muted: #475569;
+      --primary: #2563eb;
+      --primary-strong: #1d4ed8;
+      --shadow: 0 20px 50px rgba(15, 23, 42, 0.10);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       margin: 0;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      background: #fff;
-      color: #222;
+      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(37, 99, 235, 0.09), transparent 30%),
+        linear-gradient(180deg, #f8fbff 0%, var(--bg) 100%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    #appShell {
+      width: min(1180px, calc(100% - 32px));
+      margin: 28px auto 36px;
     }
 
     #siteHeader {
-      background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
-      border-bottom: 1px solid #e5e7eb;
-      padding: 28px 16px 18px;
+      background: var(--surface);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border);
+      border-radius: 26px;
+      box-shadow: var(--shadow);
+      padding: 28px 28px 18px;
+      margin-bottom: 18px;
     }
 
     #siteHeaderInner {
-      max-width: 1100px;
+      max-width: 760px;
       margin: 0 auto;
+      text-align: center;
     }
 
     #siteHeader h1 {
-      margin: 0 0 8px 0;
-      font-family: "Caveat", "Brush Script MT", cursive;
-      font-size: 56px;
-      line-height: 0.95;
+      margin: 0 0 10px;
+      font-size: clamp(2.25rem, 5vw, 3.9rem);
+      line-height: 1;
       font-weight: 700;
-      color: #111827;
-      letter-spacing: 0.01em;
+      letter-spacing: -0.04em;
+      color: var(--text);
     }
 
     #siteSub {
       margin: 0;
-      font-size: 20px;
-      line-height: 1.4;
-      color: #374151;
-      font-style: italic;
+      font-size: 1.05rem;
+      line-height: 1.55;
+      color: var(--muted);
     }
 
     #introText {
-      padding: 18px 16px 20px;
-      border-bottom: 1px solid #e5e7eb;
-      background: #ffffff;
+      background: var(--surface);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      padding: 20px 24px;
+      margin-bottom: 18px;
     }
 
     #introTextInner {
-      max-width: 1100px;
+      max-width: 760px;
       margin: 0 auto;
+      text-align: center;
     }
 
     #introText p {
-      margin: 0 0 10px 0;
-      font-size: 15px;
-      line-height: 1.65;
-      color: #4b5563;
-      max-width: none;
+      margin: 0 0 10px;
+      font-size: 0.98rem;
+      line-height: 1.7;
+      color: var(--muted);
     }
 
     #introText p:last-child {
@@ -70,73 +102,127 @@
     }
 
     #top {
-      padding: 14px 16px;
       display: grid;
-      grid-template-columns: 1fr 1fr auto auto auto;
-      gap: 8px;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto auto auto;
+      gap: 12px;
       align-items: center;
-      border-bottom: 1px solid #e5e7eb;
-      background: #ffffff;
+      padding: 18px;
+      background: var(--surface);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      margin-bottom: 16px;
       position: sticky;
-      top: 0;
-      z-index: 10;
+      top: 14px;
+      z-index: 20;
     }
 
-    input, button {
-      padding: 10px;
-      font-size: 14px;
-      border: 1px solid #d1d5db;
-      border-radius: 8px;
+    input,
+    button {
+      min-height: 48px;
+      border-radius: 14px;
+      font-size: 0.95rem;
+      transition: transform 0.15s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
     }
 
     input {
-      background: #fff;
+      width: 100%;
+      padding: 0 14px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      background: rgba(255, 255, 255, 0.95);
+      color: var(--text);
+      box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
+    }
+
+    input::placeholder {
+      color: #94a3b8;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: rgba(37, 99, 235, 0.55);
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
     }
 
     button {
-      cursor: pointer;
-      background: #111827;
-      color: white;
+      padding: 0 16px;
       border: none;
+      background: var(--text);
+      color: #ffffff;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      cursor: pointer;
       white-space: nowrap;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 14px 28px rgba(15, 23, 42, 0.16);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    #go {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-strong) 100%);
+    }
+
+    #shareRoute,
+    #openMaps {
+      background: #0f172a;
+    }
+
+    #meta,
+    #progressWrap,
+    #mapCard {
+      background: var(--surface-strong);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
     }
 
     #meta {
-      padding: 12px;
-      color: #444;
-      font-size: 13px;
-      line-height: 1.45;
+      padding: 18px 20px;
+      border-radius: 22px;
+      color: var(--text);
+      font-size: 0.93rem;
+      line-height: 1.6;
+      margin-bottom: 16px;
     }
 
     .muted {
-      color: #666;
+      color: var(--muted);
     }
 
     #whyBox {
-      margin-top: 10px;
-      padding: 10px 12px;
-      background: #f9fafb;
-      border: 1px solid #e5e7eb;
-      border-radius: 10px;
-      line-height: 1.5;
+      margin-top: 14px;
+      padding: 14px 16px;
+      background: linear-gradient(180deg, #f8fbff 0%, #f8fafc 100%);
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      border-radius: 18px;
+      line-height: 1.65;
     }
 
     #progressWrap {
-      padding: 0 12px 12px;
+      padding: 16px 18px 18px;
       display: none;
+      border-radius: 22px;
+      margin-bottom: 16px;
     }
 
     #progressLabel {
-      font-size: 13px;
-      margin-bottom: 6px;
-      color: #444;
+      font-size: 0.92rem;
+      margin-bottom: 8px;
+      color: var(--muted);
       display: block;
     }
 
     #progressOuter {
       width: 100%;
-      height: 14px;
-      background: #e5e7eb;
+      height: 12px;
+      background: #e2e8f0;
       border-radius: 999px;
       overflow: hidden;
     }
@@ -144,38 +230,73 @@
     #progressBar {
       width: 0%;
       height: 100%;
-      background: #2563eb;
+      background: linear-gradient(90deg, var(--primary) 0%, #60a5fa 100%);
       transition: width 0.2s ease;
     }
 
-    #map {
-      height: calc(100vh - 430px);
-      min-height: 420px;
+    #mapCard {
+      padding: 10px;
+      border-radius: 26px;
+      overflow: hidden;
     }
 
-    @media (max-width: 900px) {
+    #map {
+      height: min(68vh, 760px);
+      min-height: 460px;
+      width: 100%;
+      border-radius: 20px;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+    }
+
+    @media (max-width: 980px) {
+      #appShell {
+        width: min(100% - 20px, 920px);
+        margin-top: 18px;
+      }
+
+      #top {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      #go,
+      #shareRoute,
+      #openMaps {
+        width: 100%;
+      }
+    }
+
+    @media (max-width: 680px) {
+      #siteHeader,
+      #introText,
+      #top,
+      #meta,
+      #progressWrap,
+      #mapCard {
+        border-radius: 18px;
+      }
+
       #siteHeader {
-        padding: 24px 14px 14px;
+        padding: 22px 18px 16px;
       }
 
-      #siteHeader h1 {
-        font-size: 44px;
-      }
-
-      #siteSub {
-        font-size: 17px;
-      }
-
-      #introText {
-        padding: 16px 14px 18px;
+      #introText,
+      #top,
+      #meta,
+      #progressWrap {
+        padding-left: 16px;
+        padding-right: 16px;
       }
 
       #top {
         grid-template-columns: 1fr;
+        position: static;
       }
 
       #map {
-        height: calc(100vh - 620px);
+        height: min(56vh, 520px);
+        min-height: 340px;
+        border-radius: 16px;
       }
     }
   </style>
@@ -190,10 +311,11 @@
   </script>
 </head>
 <body>
+  <div id="appShell">
   <header id="siteHeader">
     <div id="siteHeaderInner">
       <h1>Find Yourself Along The Way</h1>
-      <p id="siteSub">A Scenic Route Generator.</p>
+      <p id="siteSub">A Scenic Route Generator from Fáilte Ireland.</p>
     </div>
   </header>
 
@@ -221,7 +343,9 @@
     </div>
   </div>
 
-  <div id="map"></div>
+  <div id="mapCard">
+    <div id="map"></div>
+  </div>
 
   <script>
     let map, directionsService, directionsRenderer, placesService;
@@ -233,15 +357,15 @@
     let lastOrigin = "";
     let lastDestination = "";
 
-const SCENIC_TYPES = ["natural_feature", "park", "tourist_attraction"];
+    const SCENIC_TYPES = ["natural_feature", "park", "tourist_attraction"];
 
-const DEFAULT_RADIUS_METERS = 600;
-const EXPANDED_RADIUS_METERS = 1500;
-const MAX_SAMPLES = 4;
+    const DEFAULT_RADIUS_METERS = 600;
+    const EXPANDED_RADIUS_METERS = 1500;
+    const MAX_SAMPLES = 4;
 
-const MIN_SCENIC_SCORE = 60;
-const FAILTE_MATCH_BONUS = 40;
-const FAILTE_NATURE_BONUS = 20;
+    const MIN_SCENIC_SCORE = 60;
+    const FAILTE_MATCH_BONUS = 40;
+    const FAILTE_NATURE_BONUS = 20;
 
     const placeCache = new Map();
 
@@ -370,9 +494,9 @@ const FAILTE_NATURE_BONUS = 20;
       return 0.6;
     }
 
-function cacheKey(lat, lng, type, radiusMeters) {
-  return `${lat.toFixed(3)},${lng.toFixed(3)},${radiusMeters},${type}`;
-}
+    function cacheKey(lat, lng, type, radiusMeters) {
+      return `${lat.toFixed(3)},${lng.toFixed(3)},${radiusMeters},${type}`;
+    }
 
     function isMotorwayText(text) {
       if (!text) return false;
@@ -732,16 +856,16 @@ function cacheKey(lat, lng, type, radiusMeters) {
         score += 3;
       }
 
-const failteMatch = matchFailteAttraction(place);
-if (failteMatch) {
-  score += FAILTE_MATCH_BONUS;
+      const failteMatch = matchFailteAttraction(place);
+      if (failteMatch) {
+        score += FAILTE_MATCH_BONUS;
 
-  if (/\blake\b|\blough\b|\bforest\b|\bwoods\b|\bmountain\b|\bcliff\b|\bfalls\b|\bwaterfall\b|\bbeach\b|\bcoast\b|\bharbour\b|\bharbor\b|\briver\b|\bbay\b|\bcove\b|\blighthouse\b|\bstrand\b/.test(name)) {
-    score += FAILTE_NATURE_BONUS;
-  }
+        if (/\blake\b|\blough\b|\bforest\b|\bwoods\b|\bmountain\b|\bcliff\b|\bfalls\b|\bwaterfall\b|\bbeach\b|\bcoast\b|\bharbour\b|\bharbor\b|\briver\b|\bbay\b|\bcove\b|\blighthouse\b|\bstrand\b/.test(name)) {
+          score += FAILTE_NATURE_BONUS;
+        }
 
-  place.failteMatch = failteMatch;
-}
+        place.failteMatch = failteMatch;
+      }
 
       return score;
     }
@@ -805,38 +929,38 @@ if (failteMatch) {
     }
 
     async function scenicPlacesAtPoint({
-  placesService,
-  lat,
-  lng,
-  radiusMeters = DEFAULT_RADIUS_METERS
-}) {
-  const all = [];
+      placesService,
+      lat,
+      lng,
+      radiusMeters = DEFAULT_RADIUS_METERS
+    }) {
+      const all = [];
 
-  for (const type of SCENIC_TYPES) {
-    const key = cacheKey(lat, lng, type, radiusMeters);
+      for (const type of SCENIC_TYPES) {
+        const key = cacheKey(lat, lng, type, radiusMeters);
 
-    let results;
-    if (placeCache.has(key)) {
-      results = placeCache.get(key);
-    } else {
-      results = await nearbySearch(
-        placesService,
-        new google.maps.LatLng(lat, lng),
-        radiusMeters,
-        type
-      );
-      placeCache.set(key, results);
+        let results;
+        if (placeCache.has(key)) {
+          results = placeCache.get(key);
+        } else {
+          results = await nearbySearch(
+            placesService,
+            new google.maps.LatLng(lat, lng),
+            radiusMeters,
+            type
+          );
+          placeCache.set(key, results);
+        }
+
+        for (const place of results) {
+          const scenicWeight = placeWeight(place, type);
+          if (scenicWeight <= 0) continue;
+          all.push({ ...place, scenicWeight });
+        }
+      }
+
+      return all;
     }
-
-    for (const place of results) {
-      const scenicWeight = placeWeight(place, type);
-      if (scenicWeight <= 0) continue;
-      all.push({ ...place, scenicWeight });
-    }
-  }
-
-  return all;
-}
 
     function rankScenicPlaces(places) {
       return [...places].sort((a, b) => {
@@ -1000,108 +1124,118 @@ if (failteMatch) {
     }
 
     async function scoreRoute({
-  route,
-  placesService,
-  onProgress,
-  samplesOverride,
-  radiusMeters = DEFAULT_RADIUS_METERS
-}) {
-  const path = routeToPoints(route);
-  const samples = samplesOverride || sampleAlongPath(path, MAX_SAMPLES);
-
-  let places = [];
-  let scenicSamplesUsed = 0;
-  let motorwaySamplesSkipped = 0;
-
-  for (let idx = 0; idx < samples.length; idx++) {
-    onProgress?.(idx + 1, samples.length);
-
-    const point = samples[idx];
-
-    if (isSampleOnMotorway(point, route)) {
-      motorwaySamplesSkipped += 1;
-      continue;
-    }
-
-    scenicSamplesUsed += 1;
-
-    const results = await scenicPlacesAtPoint({
+      route,
       placesService,
-      lat: point.lat,
-      lng: point.lng,
-      radiusMeters
-    });
+      onProgress,
+      samplesOverride,
+      radiusMeters = DEFAULT_RADIUS_METERS
+    }) {
+      const path = routeToPoints(route);
+      const samples = samplesOverride || sampleAlongPath(path, MAX_SAMPLES);
 
-    const weightedResults = results.map(place => ({
-      ...place,
-      scenicWeight: Math.round((place.scenicWeight || 0) * progressWeight(point.routeProgress ?? 0.5))
-    }));
+      let places = [];
+      let scenicSamplesUsed = 0;
+      let motorwaySamplesSkipped = 0;
 
-    places.push(...weightedResults);
-  }
+      for (let idx = 0; idx < samples.length; idx++) {
+        onProgress?.(idx + 1, samples.length);
 
-  const unique = uniqBestPlaces(places);
+        const point = samples[idx];
 
-  let weightedScenicScore = 0;
-  let ratingBonus = 0;
-  let naturalCount = 0;
-  let coastalCount = 0;
+        if (isSampleOnMotorway(point, route)) {
+          motorwaySamplesSkipped += 1;
+          continue;
+        }
 
-  for (const p of unique) {
-    weightedScenicScore += p.scenicWeight || 0;
+        scenicSamplesUsed += 1;
 
-    const r = typeof p.rating === "number" ? p.rating : 0;
-    const v = typeof p.user_ratings_total === "number" ? p.user_ratings_total : 0;
-    if (r >= 4.3) ratingBonus += 1;
-    if (v >= 200) ratingBonus += 1;
+        const results = await scenicPlacesAtPoint({
+          placesService,
+          lat: point.lat,
+          lng: point.lng,
+          radiusMeters
+        });
 
-    const name = (p.name || "").toLowerCase();
-    const types = p.types || [];
+        const weightedResults = results.map(place => ({
+          ...place,
+          scenicWeight: Math.round((place.scenicWeight || 0) * progressWeight(point.routeProgress ?? 0.5))
+        }));
 
-    if (
-      types.includes("natural_feature") ||
-      types.includes("park") ||
-      /\blake\b|\blough\b|\bforest\b|\bwoods\b|\bmountain\b|\bcliff\b|\bfalls\b|\bwaterfall\b|\bbeach\b|\bcoast\b|\briver\b/.test(name)
-    ) {
-      naturalCount += 1;
+        places.push(...weightedResults);
+      }
+
+      const unique = uniqBestPlaces(places);
+
+      let weightedScenicScore = 0;
+      let ratingBonus = 0;
+      let naturalCount = 0;
+      let coastalCount = 0;
+
+      for (const p of unique) {
+        weightedScenicScore += p.scenicWeight || 0;
+
+        const r = typeof p.rating === "number" ? p.rating : 0;
+        const v = typeof p.user_ratings_total === "number" ? p.user_ratings_total : 0;
+        if (r >= 4.3) ratingBonus += 1;
+        if (v >= 200) ratingBonus += 1;
+
+        const name = (p.name || "").toLowerCase();
+        const types = p.types || [];
+
+        if (
+          types.includes("natural_feature") ||
+          types.includes("park") ||
+          /\blake\b|\blough\b|\bforest\b|\bwoods\b|\bmountain\b|\bcliff\b|\bfalls\b|\bwaterfall\b|\bbeach\b|\bcoast\b|\briver\b/.test(name)
+        ) {
+          naturalCount += 1;
+        }
+
+        if (/\bbeach\b|\bcoast\b|\bcliff\b|\bharbour\b|\bharbor\b|\bmarina\b|\bpier\b|\bbay\b|\blighthouse\b|\bcove\b|\bstrand\b/.test(name)) {
+          coastalCount += 1;
+        }
+      }
+
+      const leg = route.legs?.[0];
+      const distance = leg?.distance?.value ?? 0;
+      const duration = leg?.duration?.value ?? 0;
+
+      const motorwayStats = getRouteMotorwayStats(route);
+      const motorwayPenalty = motorwayStats.motorwayRatio * 220;
+
+      return {
+        scenicCount: unique.length,
+        naturalCount,
+        coastalCount,
+        ratingBonus,
+        weightedScenicScore,
+        rawScenic: weightedScenicScore + ratingBonus,
+        distance,
+        duration,
+        samplesUsed: samples.length,
+        scenicSamplesUsed,
+        motorwaySamplesSkipped,
+        scenicPlaces: unique,
+        motorwayMeters: motorwayStats.motorwayMeters,
+        motorwayRatio: motorwayStats.motorwayRatio,
+        motorwayPenalty,
+        searchRadiusUsed: radiusMeters
+      };
     }
-
-    if (/\bbeach\b|\bcoast\b|\bcliff\b|\bharbour\b|\bharbor\b|\bmarina\b|\bpier\b|\bbay\b|\blighthouse\b|\bcove\b|\bstrand\b/.test(name)) {
-      coastalCount += 1;
-    }
-  }
-
-  const leg = route.legs?.[0];
-  const distance = leg?.distance?.value ?? 0;
-  const duration = leg?.duration?.value ?? 0;
-
-  const motorwayStats = getRouteMotorwayStats(route);
-  const motorwayPenalty = motorwayStats.motorwayRatio * 220;
-
-  return {
-    scenicCount: unique.length,
-    naturalCount,
-    coastalCount,
-    ratingBonus,
-    weightedScenicScore,
-    rawScenic: weightedScenicScore + ratingBonus,
-    distance,
-    duration,
-    samplesUsed: samples.length,
-    scenicSamplesUsed,
-    motorwaySamplesSkipped,
-    scenicPlaces: unique,
-    motorwayMeters: motorwayStats.motorwayMeters,
-    motorwayRatio: motorwayStats.motorwayRatio,
-    motorwayPenalty,
-    searchRadiusUsed: radiusMeters
-  };
-}
 
     function detourPenalty(candidate, baseline) {
       const detourDist = (candidate.distance - baseline.distance) / Math.max(1, baseline.distance);
       const detourDur = (candidate.duration - baseline.duration) / Math.max(1, baseline.duration);
-      return detourDist * 4 + detourDur * 3;
+      return detourDist * 8 + detourDur * 5;
+    }
+
+    function computeFinalScore(result, detour, routeOptionCount) {
+      let finalScore = result.rawScenic - detour - result.motorwayPenalty;
+
+      if (result.motorwayRatio > 0.55 && routeOptionCount > 1) {
+        finalScore -= 80;
+      }
+
+      return finalScore;
     }
 
     async function waitForGoogle() {
@@ -1272,15 +1406,7 @@ if (failteMatch) {
         onGo();
       }
     }
-function computeFinalScore(result, detour, routeOptionCount) {
-  let finalScore = result.rawScenic - detour - result.motorwayPenalty;
 
-  if (result.motorwayRatio > 0.55 && routeOptionCount > 1) {
-    finalScore -= 80;
-  }
-
-  return finalScore;
-}
     async function onGo() {
       const meta = document.getElementById("meta");
       const origin = document.getElementById("origin").value.trim();
@@ -1326,84 +1452,83 @@ function computeFinalScore(result, detour, routeOptionCount) {
       });
 
       const totalSteps = routeSamples.reduce((sum, samples) => sum + samples.length, 0) || 1;
-let completedSteps = 0;
+      let completedSteps = 0;
 
-const scored = [];
+      const scored = [];
 
-for (let i = 0; i < routeEntries.length; i++) {
-  const entry = routeEntries[i];
+      for (let i = 0; i < routeEntries.length; i++) {
+        const entry = routeEntries[i];
 
-  const result = await scoreRoute({
-    route: entry.route,
-    placesService,
-    samplesOverride: routeSamples[i],
-    radiusMeters: DEFAULT_RADIUS_METERS,
-    onProgress: (step, totalForRoute) => {
-      updateProgress(
-        completedSteps + step,
-        totalSteps,
-        `Scoring route ${i + 1} of ${routeEntries.length} — area ${step} of ${totalForRoute}`
-      );
-    }
-  });
+        const result = await scoreRoute({
+          route: entry.route,
+          placesService,
+          samplesOverride: routeSamples[i],
+          radiusMeters: DEFAULT_RADIUS_METERS,
+          onProgress: (step, totalForRoute) => {
+            updateProgress(
+              completedSteps + step,
+              totalSteps,
+              `Scoring route ${i + 1} of ${routeEntries.length} — area ${step} of ${totalForRoute}`
+            );
+          }
+        });
 
-  completedSteps += routeSamples[i].length;
+        completedSteps += routeSamples[i].length;
 
-  const detour = detourPenalty(result, baseline);
-  const finalScore = computeFinalScore(result, detour, routeEntries.length);
+        const detour = detourPenalty(result, baseline);
+        const finalScore = computeFinalScore(result, detour, routeEntries.length);
 
-  scored.push({
-    ...entry,
-    ...result,
-    detourPenaltyValue: detour,
-    finalScore
-  });
-}
-
-scored.sort((a, b) => b.finalScore - a.finalScore);
-let winner = scored[0];
-
-// Adaptive scenic search: if the best route is still weak, search wider and rescore
-if (winner.weightedScenicScore < MIN_SCENIC_SCORE) {
-  console.log("Scenic score too low — expanding search radius");
-
-  const rescored = [];
-  completedSteps = 0;
-  const expandedTotalSteps = routeSamples.reduce((sum, samples) => sum + samples.length, 0) || 1;
-
-  for (let i = 0; i < routeEntries.length; i++) {
-    const entry = routeEntries[i];
-
-    const result = await scoreRoute({
-      route: entry.route,
-      placesService,
-      samplesOverride: routeSamples[i],
-      radiusMeters: EXPANDED_RADIUS_METERS,
-      onProgress: (step, totalForRoute) => {
-        updateProgress(
-          completedSteps + step,
-          expandedTotalSteps,
-          `Re-scoring route ${i + 1} of ${routeEntries.length} with wider scenic search — area ${step} of ${totalForRoute}`
-        );
+        scored.push({
+          ...entry,
+          ...result,
+          detourPenaltyValue: detour,
+          finalScore
+        });
       }
-    });
 
-    completedSteps += routeSamples[i].length;
+      scored.sort((a, b) => b.finalScore - a.finalScore);
+      let winner = scored[0];
 
-    const detour = detourPenalty(result, baseline);
-    const finalScore = computeFinalScore(result, detour, routeEntries.length);
+      if (winner.weightedScenicScore < MIN_SCENIC_SCORE) {
+        console.log("Scenic score too low — expanding search radius");
 
-    rescored.push({
-      ...entry,
-      ...result,
-      detourPenaltyValue: detour,
-      finalScore
-    });
-  }
+        const rescored = [];
+        completedSteps = 0;
+        const expandedTotalSteps = routeSamples.reduce((sum, samples) => sum + samples.length, 0) || 1;
 
-  rescored.sort((a, b) => b.finalScore - a.finalScore);
-  winner = rescored[0];
-}
+        for (let i = 0; i < routeEntries.length; i++) {
+          const entry = routeEntries[i];
+
+          const result = await scoreRoute({
+            route: entry.route,
+            placesService,
+            samplesOverride: routeSamples[i],
+            radiusMeters: EXPANDED_RADIUS_METERS,
+            onProgress: (step, totalForRoute) => {
+              updateProgress(
+                completedSteps + step,
+                expandedTotalSteps,
+                `Re-scoring route ${i + 1} of ${routeEntries.length} with wider scenic search — area ${step} of ${totalForRoute}`
+              );
+            }
+          });
+
+          completedSteps += routeSamples[i].length;
+
+          const detour = detourPenalty(result, baseline);
+          const finalScore = computeFinalScore(result, detour, routeEntries.length);
+
+          rescored.push({
+            ...entry,
+            ...result,
+            detourPenaltyValue: detour,
+            finalScore
+          });
+        }
+
+        rescored.sort((a, b) => b.finalScore - a.finalScore);
+        winner = rescored[0];
+      }
 
       lastWinner = winner;
       lastOrigin = origin;
@@ -1442,7 +1567,7 @@ if (winner.weightedScenicScore < MIN_SCENIC_SCORE) {
           • Total route options considered: ${routeEntries.length}
           • Motorway share: ${(winner.motorwayRatio * 100).toFixed(0)}%
           • Motorway penalty: ${winner.motorwayPenalty.toFixed(1)}
-          • Search radius: ${winner.searchRadiusUsed}m• Detour penalty: ${winner.detourPenaltyValue.toFixed(2)}
+          • Detour penalty: ${winner.detourPenaltyValue.toFixed(2)}
           • Final score: ${winner.finalScore.toFixed(2)}
         </div>
         <div id="whyBox">
@@ -1454,5 +1579,6 @@ if (winner.weightedScenicScore < MIN_SCENIC_SCORE) {
 
     init();
   </script>
+  </div>
 </body>
 </html>
