@@ -231,9 +231,10 @@
     const MAX_SAMPLES = 3;
     const MAX_SCENIC_MARKERS = 6;
     const MAX_WAYPOINT_CANDIDATES = 1;
-    const OSM_CORRIDOR_METERS = 2500;
-    const OSM_CORRIDOR_EXPANDED_METERS = 4500;
-    const MIN_SCENIC_SCORE = 85;
+
+    const OSM_CORRIDOR_METERS = 5000;
+    const OSM_CORRIDOR_EXPANDED_METERS = 9000;
+    const MIN_SCENIC_SCORE = 35;
     const OVERPASS_TIMEOUT_SECONDS = 12;
 
     const osmBBoxCache = new Map();
@@ -526,7 +527,7 @@
 [out:json][timeout:${OVERPASS_TIMEOUT_SECONDS}];
 (
   nwr(${bbox.minLat},${bbox.minLng},${bbox.maxLat},${bbox.maxLng})["tourism"="viewpoint"];
-  nwr(${bbox.minLat},${bbox.minLng},${bbox.maxLat},${bbox.maxLng})["natural"~"^(beach|bay|cape|cliff|coastline|fell|grassland|heath|peak|ridge|rock|sand|scree|scrub|spring|stone|valley|water|wetland|wood)$"];
+  nwr(${bbox.minLat},${bbox.minLng},${bbox.maxLat},${bbox.maxLng})["natural"~"^(beach|bay|cliff|coastline|peak|water|wood)$"];
   nwr(${bbox.minLat},${bbox.minLng},${bbox.maxLat},${bbox.maxLng})["waterway"="waterfall"];
   nwr(${bbox.minLat},${bbox.minLng},${bbox.maxLat},${bbox.maxLng})["historic"~"^(castle|monument|ruins|fort|archaeological_site)$"];
 );
@@ -612,6 +613,27 @@ out center tags;
       return score;
     }
 
+    function failteProximityBoost(point) {
+      let best = 0;
+
+      for (const f of failteAttractions) {
+        if (f.lat == null || f.lng == null) continue;
+
+        const d = haversineMeters(
+          { lat: point.lat, lng: point.lng },
+          { lat: f.lat, lng: f.lng }
+        );
+
+        if (d < 1500) {
+          best = Math.max(best, 35);
+        } else if (d < 3000) {
+          best = Math.max(best, 20);
+        }
+      }
+
+      return best;
+    }
+
     function matchFailteByName(name) {
       const normalized = normalizeName(name);
       if (!normalized) return null;
@@ -636,10 +658,11 @@ out center tags;
 
       score += scenicNameScore(name);
       score += driveByVisibilityScore(name, type);
+      score += failteProximityBoost(point);
 
       if (type === "viewpoint") score += 18;
       if (type === "waterfall") score += 16;
-      if (["cliff", "beach", "bay", "coastline", "peak", "water", "wood", "wetland", "heath", "scrub"].includes(type)) {
+      if (["cliff", "beach", "bay", "coastline", "peak", "water", "wood"].includes(type)) {
         score += 12;
       }
       if (["castle", "ruins", "monument", "fort", "archaeological_site"].includes(type)) {
@@ -835,8 +858,8 @@ out center tags;
       for (const step of steps) {
         const dist = step?.distance?.value ?? 0;
         totalMeters += dist;
-        const t = `${stripHtml(step?.instructions || "")} ${step?.maneuver || ""}`.toLowerCase();
-        if (t.includes("motorway") || /\bm\d+\b/i.test(t) || t.includes("merge onto m") || t.includes("take the ramp")) {
+        const t = `${stripHtml(step?.instructions || "")} ${step?.maneuver || ""}`;
+        if (/motorway|\bm\d+\b|merge onto m|take the ramp/i.test(t)) {
           motorwayMeters += dist;
         }
       }
@@ -913,7 +936,7 @@ out center tags;
         const t = (f.featureType || "").toLowerCase();
 
         if (
-          ["beach", "bay", "cliff", "peak", "water", "wood", "waterfall", "wetland", "heath", "scrub", "valley"].includes(t) ||
+          ["beach", "bay", "cliff", "peak", "water", "wood", "waterfall"].includes(t) ||
           /\blake\b|\blough\b|\bforest\b|\bwoods\b|\bmountain\b|\bcliff\b|\bfalls\b|\bwaterfall\b|\bbeach\b|\bcoast\b|\briver\b/.test(n)
         ) {
           naturalCount += 1;
@@ -936,9 +959,6 @@ out center tags;
       const motorwayPenalty = motorwayStats.motorwayRatio * 220;
       const failteRouteScore = scoreFailteProximity(entry.route);
 
-      const detourDist = 0;
-      const detourDur = 0;
-
       return {
         ...entry,
         scenicCount: unique.length,
@@ -951,14 +971,10 @@ out center tags;
         distance,
         duration,
         samplesUsed: samples.length,
-        scenicSamplesUsed: samples.length,
-        motorwaySamplesSkipped: 0,
         scenicFeatures: unique,
         motorwayMeters: motorwayStats.motorwayMeters,
         motorwayRatio: motorwayStats.motorwayRatio,
-        motorwayPenalty,
-        detourDist,
-        detourDur
+        motorwayPenalty
       };
     }
 
@@ -1334,7 +1350,7 @@ out center tags;
         .reduce((a, b) => (b.duration < a.duration ? b : a));
 
       async function runScoring(corridorMeters) {
-        updateProgress(2, 4, "Scoring route options...");
+        updateProgress(2, 4, `Scoring route options...`);
         const scored = await Promise.all(
           routeEntries.map(entry => scoreRoute(entry, sharedOsmScored, corridorMeters))
         );
