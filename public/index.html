@@ -137,7 +137,6 @@
 
     const SCENIC_TYPES = ["natural_feature", "park", "tourist_attraction"];
     const RADIUS_METERS = 600;
-    const SAMPLE_EVERY_METERS = 7000;
     const MAX_SAMPLES = 4;
 
     const placeCache = new Map();
@@ -209,29 +208,62 @@
       return [];
     }
 
-    function sampleAlongPath(points, everyMeters = SAMPLE_EVERY_METERS, maxSamples = MAX_SAMPLES) {
+    function sampleAlongPath(points, maxSamples = MAX_SAMPLES) {
       if (!points || points.length === 0) return [];
-      if (points.length === 1) return [points[0]];
+      if (points.length <= 2) {
+        return points.map((p, i) => ({
+          ...p,
+          routeProgress: points.length === 1 ? 0.5 : i / (points.length - 1)
+        }));
+      }
 
-      const samples = [points[0]];
-      let acc = 0;
+      const cumulative = [0];
+      let total = 0;
 
       for (let i = 1; i < points.length; i++) {
-        acc += haversineMeters(points[i - 1], points[i]);
-        if (acc >= everyMeters) {
-          samples.push(points[i]);
-          acc = 0;
-          if (samples.length >= maxSamples - 1) break;
+        total += haversineMeters(points[i - 1], points[i]);
+        cumulative.push(total);
+      }
+
+      if (total === 0) {
+        return [{ ...points[0], routeProgress: 0.5 }];
+      }
+
+      const startPct = 0.18;
+      const endPct = 0.82;
+
+      const samples = [];
+      for (let i = 0; i < maxSamples; i++) {
+        const t = startPct + ((endPct - startPct) * i) / Math.max(1, maxSamples - 1);
+        const targetDist = total * t;
+
+        let bestIdx = 0;
+        let bestDiff = Infinity;
+
+        for (let j = 0; j < cumulative.length; j++) {
+          const diff = Math.abs(cumulative[j] - targetDist);
+          if (diff < bestDiff) {
+            bestDiff = diff;
+            bestIdx = j;
+          }
         }
+
+        samples.push({
+          ...points[bestIdx],
+          routeProgress: t
+        });
       }
 
-      const last = points[points.length - 1];
-      const prev = samples[samples.length - 1];
-      if (!prev || haversineMeters(prev, last) > 50) {
-        samples.push(last);
-      }
+      return samples;
+    }
 
-      return samples.slice(0, maxSamples);
+    function progressWeight(progress) {
+      const distanceFromMiddle = Math.abs(progress - 0.5);
+
+      if (distanceFromMiddle < 0.15) return 1.6;
+      if (distanceFromMiddle < 0.25) return 1.25;
+      if (distanceFromMiddle < 0.35) return 1.0;
+      return 0.6;
     }
 
     function cacheKey(lat, lng, type) {
@@ -827,7 +859,7 @@
 
     async function scoreRoute({ route, placesService, onProgress, samplesOverride }) {
       const path = routeToPoints(route);
-      const samples = samplesOverride || sampleAlongPath(path, SAMPLE_EVERY_METERS, MAX_SAMPLES);
+      const samples = samplesOverride || sampleAlongPath(path, MAX_SAMPLES);
 
       let places = [];
       let scenicSamplesUsed = 0;
@@ -851,7 +883,12 @@
           lng: point.lng
         });
 
-        places.push(...results);
+        const weightedResults = results.map(place => ({
+          ...place,
+          scenicWeight: Math.round((place.scenicWeight || 0) * progressWeight(point.routeProgress ?? 0.5))
+        }));
+
+        places.push(...weightedResults);
       }
 
       const unique = uniqBestPlaces(places);
@@ -1127,7 +1164,7 @@
 
       const routeSamples = routeEntries.map(entry => {
         const path = routeToPoints(entry.route);
-        return sampleAlongPath(path, SAMPLE_EVERY_METERS, MAX_SAMPLES);
+        return sampleAlongPath(path, MAX_SAMPLES);
       });
 
       const totalSteps = routeSamples.reduce((sum, samples) => sum + samples.length, 0) || 1;
