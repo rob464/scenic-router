@@ -26,99 +26,70 @@ padding:28px 16px 18px;
 
 #siteHeaderInner{
 max-width:1100px;
-margin:0 auto;
+margin:auto;
 }
 
 #siteHeader h1{
 margin:0 0 8px 0;
 font-family:"Caveat",cursive;
 font-size:56px;
-line-height:.95;
-font-weight:700;
-color:#111827;
 }
 
 #siteSub{
-margin:0;
-font-size:20px;
-line-height:1.4;
-color:#374151;
 font-style:italic;
+font-size:20px;
+color:#374151;
 }
 
 #introText{
-padding:18px 16px 20px;
+padding:18px 16px;
 border-bottom:1px solid #e5e7eb;
 }
 
 #introTextInner{
 max-width:1100px;
-margin:0 auto;
-}
-
-#introText p{
-margin:0 0 10px 0;
-font-size:15px;
-line-height:1.65;
-color:#4b5563;
+margin:auto;
 }
 
 #top{
 padding:14px 16px;
 display:grid;
-grid-template-columns:1fr 1fr auto auto auto;
+grid-template-columns:1fr 1fr auto;
 gap:8px;
-align-items:center;
 border-bottom:1px solid #e5e7eb;
-background:#fff;
-position:sticky;
-top:0;
-z-index:10;
 }
 
 input,button{
 padding:10px;
-font-size:14px;
-border:1px solid #d1d5db;
 border-radius:8px;
+border:1px solid #d1d5db;
 }
 
 button{
-cursor:pointer;
 background:#111827;
-color:#fff;
+color:white;
+cursor:pointer;
 border:none;
 }
 
 #meta{
 padding:12px;
 font-size:13px;
-line-height:1.45;
 }
 
 #whyBox{
 margin-top:10px;
-padding:10px 12px;
+padding:10px;
 background:#f9fafb;
 border:1px solid #e5e7eb;
-border-radius:10px;
+border-radius:8px;
 }
 
 #map{
 height:calc(100vh - 420px);
-min-height:420px;
 }
 
 </style>
-
-<script>
-const MAPS_KEY="AIzaSyCNGxoiKjhICp-Qt2FHpn4XuXd0Nngf34g";
-
-const script=document.createElement("script");
-script.src=`https://maps.googleapis.com/maps/api/js?key=${MAPS_KEY}&libraries=places&v=weekly`;
-script.defer=true;
-document.head.appendChild(script);
-</script>
 </head>
 
 <body>
@@ -132,8 +103,8 @@ document.head.appendChild(script);
 
 <section id="introText">
 <div id="introTextInner">
-<p>Use this tool to easily find a scenic route to wherever you’re going to.</p>
-<p>Featuring thousands of attractions as listed with Fáilte Ireland, as well as countless natural wonders you might find on the way.</p>
+<p>Use this tool to easily find a scenic route to wherever you’re going.</p>
+<p>Featuring thousands of attractions listed with Fáilte Ireland, as well as countless natural wonders you might find along the way.</p>
 </div>
 </section>
 
@@ -141,97 +112,89 @@ document.head.appendChild(script);
 <input id="origin" placeholder="Start (e.g. Dublin)">
 <input id="destination" placeholder="End (e.g. Galway)">
 <button id="go">Find Scenic Route</button>
-<button id="shareRoute">Copy Share Link</button>
-<button id="openMaps">Open in Google Maps</button>
 </div>
 
-<div id="meta">Enter origin and destination.</div>
+<div id="meta">Enter an origin and destination.</div>
 
 <div id="map"></div>
 
 <script>
 
-let map,directionsService,directionsRenderer,placesService;
+let map;
+let directionsService;
+let directionsRenderer;
+let placesService;
 
 let failteAttractions=[];
 
-let lastWinner=null;
-let lastOrigin="";
-let lastDestination="";
-
-let SEARCH_RADIUS=600;
-let RADIUS_METERS=SEARCH_RADIUS;
-
+let RADIUS_METERS=600;
 const EXPANDED_RADIUS=1600;
 const MIN_SCENIC_SCORE=70;
 
-const SCENIC_TYPES=["natural_feature","park","tourist_attraction"];
-
 function haversineMeters(a,b){
+
 const R=6371000;
-const toRad=d=>d*Math.PI/180;
-const dLat=toRad(b.lat-a.lat);
-const dLng=toRad(b.lng-a.lng);
-const lat1=toRad(a.lat);
-const lat2=toRad(b.lat);
-const s=Math.sin(dLat/2)**2+Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLng/2)**2;
-return 2*R*Math.asin(Math.min(1,Math.sqrt(s)));
+
+const dLat=(b.lat-a.lat)*Math.PI/180;
+const dLng=(b.lng-a.lng)*Math.PI/180;
+
+const lat1=a.lat*Math.PI/180;
+const lat2=b.lat*Math.PI/180;
+
+const x=
+Math.sin(dLat/2)**2+
+Math.cos(lat1)*Math.cos(lat2)*
+Math.sin(dLng/2)**2;
+
+return 2*R*Math.asin(Math.sqrt(x));
+
 }
 
 function routeToPoints(route){
+
 return route.overview_path.map(p=>({
 lat:p.lat(),
 lng:p.lng()
 }));
+
 }
 
 function driveByVisibilityScore(place){
 
 const name=(place.name||"").toLowerCase();
-const types=place.types||[];
 
 let score=0;
 
-if(/\bcliff\b|\bbeach\b|\bcoast\b|\bbay\b|\bcove\b|\blake\b|\blough\b|\briver\b|\bmountain\b|\bwaterfall\b|\bfalls\b|\bharbour\b|\bharbor\b|\bstrand\b/.test(name))
+if(/\bcliff\b|\bbeach\b|\bcoast\b|\bbay\b|\bcove\b|\blough\b|\blake\b|\bmountain\b|\bwaterfall\b/.test(name))
 score+=12;
 
 if(/\bviewpoint\b|\blookout\b|\bscenic\b/.test(name))
 score+=10;
 
-if(types.includes("natural_feature"))
-score+=8;
-
-if(types.includes("park"))
-score+=3;
-
-if(/\bmuseum\b|\bgallery\b|\bvisitor centre\b|\bgarden\b/.test(name))
-score-=6;
+if(/\bgarden\b|\bmuseum\b/.test(name))
+score-=5;
 
 return score;
+
 }
 
 function placeWeight(place){
 
-let score=0;
-
-score+=driveByVisibilityScore(place);
-
-const failteMatch=matchFailte(place);
-
-if(failteMatch){
-
-score+=45;
+let score=driveByVisibilityScore(place);
 
 const name=(place.name||"").toLowerCase();
 
-if(/\blake\b|\blough\b|\bforest\b|\bwoods\b|\bmountain\b|\bcliff\b|\bbeach\b|\bcoast\b/.test(name))
-score+=25;
+if(matchFailte(place)){
 
-place.failteMatch=true;
+score+=45;
+
+if(/\bbeach\b|\bcoast\b|\blough\b|\blake\b|\bcliff\b/.test(name))
+score+=25;
 
 }
 
 return score;
+
 }
 
 function matchFailte(place){
@@ -241,8 +204,6 @@ const name=(place.name||"").toLowerCase();
 for(const row of failteAttractions){
 
 const csv=(row.name||"").toLowerCase();
-
-if(!csv)continue;
 
 if(name.includes(csv)||csv.includes(name))
 return true;
@@ -254,8 +215,6 @@ return false;
 }
 
 function scoreFailteProximity(route){
-
-if(!failteAttractions.length) return 0;
 
 const path=routeToPoints(route);
 
@@ -289,6 +248,7 @@ break;
 }
 
 return score;
+
 }
 
 function detourPenalty(candidate,baseline){
@@ -302,8 +262,6 @@ return dist*4+dur*3;
 
 async function loadFailteCsv(){
 
-try{
-
 const r=await fetch("/attractions.csv");
 const text=await r.text();
 
@@ -315,11 +273,9 @@ failteAttractions=rows.slice(1).map(line=>{
 
 const cols=line.split(",");
 
-const obj={};
+let obj={};
 
-headers.forEach((h,i)=>{
-obj[h.trim()]=cols[i];
-});
+headers.forEach((h,i)=>obj[h.trim()]=cols[i]);
 
 return obj;
 
@@ -327,43 +283,28 @@ return obj;
 
 console.log("Loaded Failte attractions:",failteAttractions.length);
 
-}catch(e){
-
-console.warn("Failte CSV load failed");
-
-}
-
 }
 
 async function scenicPlaces(lat,lng){
 
-const results=[];
-
-for(const type of SCENIC_TYPES){
-
-const res=await new Promise(resolve=>{
+return new Promise(resolve=>{
 
 placesService.nearbySearch(
-{location:{lat,lng},radius:RADIUS_METERS,type},
-(r,status)=>{
-if(status==="OK")resolve(r);
-else resolve([]);
-});
+{
+location:{lat,lng},
+radius:RADIUS_METERS,
+type:"tourist_attraction"
+},
+(results,status)=>{
+
+if(status==="OK")
+resolve(results);
+else
+resolve([]);
 
 });
 
-for(const p of res){
-
-const w=placeWeight(p);
-
-if(w>0)
-results.push({...p,scenicWeight:w});
-
-}
-
-}
-
-return results;
+});
 
 }
 
@@ -373,16 +314,13 @@ const points=routeToPoints(route);
 
 let scenicScore=0;
 
-let scenicPlacesFound=[];
+for(const p of points.slice(0,6)){
 
-for(const p of points.slice(0,8)){
+const places=await scenicPlaces(p.lat,p.lng);
 
-const res=await scenicPlaces(p.lat,p.lng);
+for(const place of places){
 
-for(const place of res){
-
-scenicScore+=place.scenicWeight;
-scenicPlacesFound.push(place);
+scenicScore+=placeWeight(place);
 
 }
 
@@ -396,31 +334,8 @@ return{
 rawScenic:scenicScore,
 failteRouteScore,
 distance:leg.distance.value,
-duration:leg.duration.value,
-scenicPlaces:scenicPlacesFound
+duration:leg.duration.value
 };
-
-}
-
-async function getRoutes(origin,destination){
-
-return new Promise((resolve,reject)=>{
-
-directionsService.route({
-origin,
-destination,
-travelMode:"DRIVING",
-provideRouteAlternatives:true
-},(res,status)=>{
-
-if(status==="OK")
-resolve(res.routes);
-else
-reject();
-
-});
-
-});
 
 }
 
@@ -429,7 +344,18 @@ async function onGo(){
 const origin=document.getElementById("origin").value;
 const destination=document.getElementById("destination").value;
 
-const routes=await getRoutes(origin,destination);
+directionsService.route({
+
+origin,
+destination,
+travelMode:"DRIVING",
+provideRouteAlternatives:true
+
+},async(res,status)=>{
+
+if(status!=="OK") return;
+
+const routes=res.routes;
 
 const baseline={
 distance:routes[0].legs[0].distance.value,
@@ -438,7 +364,9 @@ duration:routes[0].legs[0].duration.value
 
 let scored=[];
 
-for(const r of routes){
+for(let i=0;i<routes.length;i++){
+
+const r=routes[i];
 
 const result=await scoreRoute(r);
 
@@ -446,7 +374,12 @@ const detour=detourPenalty(result,baseline);
 
 const finalScore=result.rawScenic+result.failteRouteScore-detour;
 
-scored.push({...result,route:r,finalScore});
+scored.push({
+...result,
+routeIndex:i,
+directionsResult:res,
+finalScore
+});
 
 }
 
@@ -456,35 +389,14 @@ let winner=scored[0];
 
 if(winner.rawScenic<MIN_SCENIC_SCORE){
 
-console.log("Expanding scenic search radius");
+console.log("Expanding scenic search");
 
 RADIUS_METERS=EXPANDED_RADIUS;
 
-scored=[];
-
-for(const r of routes){
-
-const result=await scoreRoute(r);
-
-const detour=detourPenalty(result,baseline);
-
-const finalScore=result.rawScenic+result.failteRouteScore-detour;
-
-scored.push({...result,route:r,finalScore});
-
 }
 
-scored.sort((a,b)=>b.finalScore-a.finalScore);
-
-winner=scored[0];
-
-}
-
-directionsRenderer.setDirections({routes:[winner.route]});
-
-lastWinner=winner;
-lastOrigin=origin;
-lastDestination=destination;
+directionsRenderer.setDirections(winner.directionsResult);
+directionsRenderer.setRouteIndex(winner.routeIndex);
 
 document.getElementById("meta").innerHTML=
 
@@ -493,17 +405,19 @@ ${(winner.distance/1000).toFixed(1)} km • ${Math.round(winner.duration/60)} mi
 <div id="whyBox">
 Scenic score: ${winner.rawScenic}
 <br>
-Failte attraction influence: ${winner.failteRouteScore}
+Fáilte attraction influence: ${winner.failteRouteScore}
 </div>`;
+
+});
 
 }
 
-function init(){
+function initMap(){
 
-map=new google.maps.Map(document.getElementById("map"),{
-center:{lat:53.4,lng:-8.2},
-zoom:7
-});
+map=new google.maps.Map(
+document.getElementById("map"),
+{center:{lat:53.4,lng:-8.2},zoom:7}
+);
 
 directionsService=new google.maps.DirectionsService();
 directionsRenderer=new google.maps.DirectionsRenderer({map});
@@ -515,11 +429,11 @@ loadFailteCsv();
 
 }
 
-window.initMap=init;
-
 </script>
 
-<script async defer src="https://maps.googleapis.com/maps/api/js?key=PASTE_GOOGLE_KEY&libraries=places&callback=initMap"></script>
+<script async defer
+src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCNGxoiKjhICp-Qt2FHpn4XuXd0Nngf34g&libraries=places&callback=initMap">
+</script>
 
 </body>
 </html>
