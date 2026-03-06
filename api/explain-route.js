@@ -30,12 +30,16 @@ export default async function handler(req, res) {
             {
               type: "input_text",
               text:
-                "You write short, natural, friendly route explanations for a scenic driving app. " +
-                "Use only the facts provided. Do not invent landmarks, roads, exits, or scenery. " +
-                "When mentioning a landmark, include its location context naturally if one is provided, " +
-                "for example: 'the Garden of Remembrance at Parnell Square in Dublin'. " +
-                "Prefer natural scenery over commercial attractions. " +
-                "Keep the answer to 2-4 sentences, under 110 words."
+               text:
+  "You write short, natural, friendly route explanations for a scenic driving app. " +
+  "The first sentence must begin in a style like: 'On your way to [destination], why not visit...', " +
+  "'On your way to [destination], stop by...', or 'On your way to [destination], take a look at...'. " +
+  "Use the actual destination provided in the facts. " +
+  "Use only the facts provided. Do not invent landmarks, roads, exits, or scenery. " +
+  "When mentioning a landmark, include its location context naturally if one is provided, " +
+  "for example: 'the Garden of Remembrance at Parnell Square in Dublin'. " +
+  "Prefer natural scenery over commercial attractions. " +
+  "Keep the answer to 2-4 sentences, under 110 words."
             }
           ]
         },
