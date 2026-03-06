@@ -2,8 +2,12 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Scenic Route Finder</title>
+  <title>Scenic Router</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&display=swap" rel="stylesheet">
 
   <style>
     body {
@@ -16,46 +20,53 @@
     #siteHeader {
       background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
       border-bottom: 1px solid #e5e7eb;
-      padding: 36px 16px 28px;
+      padding: 28px 16px 18px;
     }
 
     #siteHeaderInner {
-      max-width: 900px;
+      max-width: 1100px;
       margin: 0 auto;
     }
 
     #siteHeader h1 {
-      margin: 0 0 10px 0;
-      font-size: 34px;
-      line-height: 1.1;
-      font-weight: 800;
-      letter-spacing: -0.02em;
+      margin: 0 0 8px 0;
+      font-family: "Caveat", "Brush Script MT", cursive;
+      font-size: 56px;
+      line-height: 0.95;
+      font-weight: 700;
       color: #111827;
+      letter-spacing: 0.01em;
     }
 
     #siteSub {
-      margin: 0 0 18px 0;
-      font-size: 18px;
+      margin: 0;
+      font-size: 20px;
       line-height: 1.4;
       color: #374151;
-      font-weight: 500;
-    }
-
-    #siteBody {
-      max-width: 760px;
-    }
-
-    #siteBody p {
-      margin: 0 0 12px 0;
-      font-size: 15px;
-      line-height: 1.6;
-      color: #4b5563;
-    }
-
-    #siteQuote {
-      margin-top: 18px;
       font-style: italic;
-      color: #1f2937;
+    }
+
+    #introText {
+      padding: 18px 16px 20px;
+      border-bottom: 1px solid #e5e7eb;
+      background: #ffffff;
+    }
+
+    #introTextInner {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    #introText p {
+      margin: 0 0 10px 0;
+      font-size: 15px;
+      line-height: 1.65;
+      color: #4b5563;
+      max-width: none;
+    }
+
+    #introText p:last-child {
+      margin-bottom: 0;
     }
 
     #top {
@@ -76,6 +87,10 @@
       font-size: 14px;
       border: 1px solid #d1d5db;
       border-radius: 8px;
+    }
+
+    input {
+      background: #fff;
     }
 
     button {
@@ -134,21 +149,25 @@
     }
 
     #map {
-      height: calc(100vh - 360px);
+      height: calc(100vh - 430px);
       min-height: 420px;
     }
 
     @media (max-width: 900px) {
       #siteHeader {
-        padding: 28px 14px 22px;
+        padding: 24px 14px 14px;
       }
 
       #siteHeader h1 {
-        font-size: 28px;
+        font-size: 44px;
       }
 
       #siteSub {
-        font-size: 16px;
+        font-size: 17px;
+      }
+
+      #introText {
+        padding: 16px 14px 18px;
       }
 
       #top {
@@ -156,7 +175,7 @@
       }
 
       #map {
-        height: calc(100vh - 480px);
+        height: calc(100vh - 620px);
       }
     }
   </style>
@@ -173,15 +192,18 @@
 <body>
   <header id="siteHeader">
     <div id="siteHeaderInner">
-      <h1>Scenic Route Finder</h1>
-      <p id="siteSub">Sometimes the best route from A to B isn’t the fastest one.</p>
-      <div id="siteBody">
-        <p>Use this tool to easily find a scenic route to wherever you’re going to.</p>
-        <p>Featuring hundreds of attractions as listed with Fáilte Ireland, as well as countless natural wonders across all of Ireland.</p>
-        <p id="siteQuote">The best way to find yourself… is to get a little lost, first.</p>
-      </div>
+      <h1>Scenic Router</h1>
+      <p id="siteSub">The best way to find yourself… is to get a little lost, first.</p>
     </div>
   </header>
+
+  <section id="introText">
+    <div id="introTextInner">
+      <p>Sometimes the best route from A to B isn’t the fastest one.</p>
+      <p>Use this tool to easily find a scenic route to wherever you’re going to.</p>
+      <p>Featuring hundreds of attractions as listed with Fáilte Ireland, as well as countless natural wonders across all of Ireland.</p>
+    </div>
+  </section>
 
   <div id="top">
     <input id="origin" placeholder="Start (e.g. Dublin)" />
