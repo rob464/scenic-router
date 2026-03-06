@@ -768,6 +768,11 @@
         .join(" ");
     }
 
+    function getPlaceContext(place) {
+      const vicinity = place.vicinity || place.formatted_address || "";
+      return vicinity.trim();
+    }
+
     function buildExplanationFacts(route, scenicPlaces, scoreData, origin, destination) {
       const ranked = rankScenicPlaces(scenicPlaces).slice(0, 3);
       const failteBoosted = scenicPlaces.filter(p => p.failteMatch).slice(0, 2);
@@ -782,8 +787,15 @@
         destination,
         motorwaySharePercent: Math.round((scoreData.motorwayRatio || 0) * 100),
         motorwayExitInstruction,
-        scenicHighlights: ranked.map(p => p.name).filter(Boolean),
-        failteHighlights: failteBoosted.map(p => p.name).filter(Boolean),
+        scenicHighlights: ranked.map(p => ({
+          name: p.name || "",
+          context: getPlaceContext(p),
+          scenicWeight: p.scenicWeight || 0
+        })).filter(p => p.name),
+        failteHighlights: failteBoosted.map(p => ({
+          name: p.name || "",
+          context: getPlaceContext(p)
+        })).filter(p => p.name),
         quietRoadInstruction,
         naturalHighlightsCount: scoreData.naturalCount || 0,
         coastalHighlightsCount: scoreData.coastalCount || 0
