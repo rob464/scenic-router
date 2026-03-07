@@ -28,19 +28,20 @@
       box-sizing: border-box;
     }
 
-  body,
+body,
 input,
 button,
 select,
 textarea {
   font-family: 'Lexend', system-ui, sans-serif;
+
+  background:
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.09), transparent 30%),
+    linear-gradient(180deg, #f8fbff 0%, var(--bg) 100%);
+
+  color: var(--text);
+  min-height: 100vh;
 }
-      background:
-        radial-gradient(circle at top left, rgba(37, 99, 235, 0.09), transparent 30%),
-        linear-gradient(180deg, #f8fbff 0%, var(--bg) 100%);
-      color: var(--text);
-      min-height: 100vh;
-    }
 
     #appShell {
       width: min(1180px, calc(100% - 32px));
@@ -1507,14 +1508,21 @@ textarea {
     }
 
     function getWaypointParamValue(places) {
-      return places
-        .map(place => {
-          if (place.place_id) return `place_id:${place.place_id}`;
-          return place.name || "";
-        })
-        .filter(Boolean)
-        .join("|");
-    }
+  return places
+    .map(place => {
+      const loc = place.geometry?.location;
+
+      if (loc) {
+        const lat = typeof loc.lat === "function" ? loc.lat() : loc.lat;
+        const lng = typeof loc.lng === "function" ? loc.lng() : loc.lng;
+        return `${lat},${lng}`;
+      }
+
+      return place.name || "";
+    })
+    .filter(Boolean)
+    .join("|");
+}
 
     function buildGoogleMapsUrl(origin, destination, winner) {
       const base = "https://www.google.com/maps/dir/?api=1";
