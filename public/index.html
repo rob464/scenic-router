@@ -201,6 +201,14 @@ textarea {
     .muted {
       color: var(--muted);
     }
+    
+    .fineprint {
+  font-size: 11px;
+  line-height: 1.5;
+  color: #64748b;
+  opacity: 0.85;
+  word-spacing: 1px;
+}
 
     .results-block + .results-block {
       margin-top: 20px;
@@ -1793,7 +1801,7 @@ const extraTimeFriendlyLine =
 <div style="margin-top:6px; font-size:14px; color:#374151;">
   ${extraTimeFriendlyLine}
 </div>
-<div class="muted" style="margin-top:8px;">
+<div class="fineprint muted" style="margin-top:8px;">
             Scenic places: ${winner.scenicCount}
             • Natural highlights: ${winner.naturalCount}
             • Coastal highlights: ${winner.coastalCount}
